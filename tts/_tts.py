@@ -35,6 +35,7 @@ class Synthesizers(Enum):
     PICOVOICE_ORCA = "picovoice_orca"
     KOKORO_TTS = "kokoro_tts"
     CHATTERBOX_TTS_TURBO = "chatterbox_tts_turbo"  # TODO (Ted): Ask Ali if we should do Chatterbox-TTS or Chatterbox-TTS-Turbo.
+    KITTEN_TTS = "kitten_tts"
 
 
 class Synthesizer:
@@ -93,6 +94,7 @@ class Synthesizer:
             Synthesizers.PICOVOICE_ORCA: PicovoiceOrcaSynthesizer,
             Synthesizers.KOKORO_TTS: KokoroSynthesizer,
             Synthesizers.CHATTERBOX_TTS_TURBO: ChatterboxTurboSynthesizer,
+            Synthesizers.KITTEN_TTS: KittenSynthesizer,
         }
 
         if engine not in subclasses:
@@ -573,6 +575,58 @@ class ChatterboxTurboSynthesizer(Synthesizer):
         self._timer.maybe_log_time_first_audio()
 
         self._audio_sink.add(data=wav)  # TODO (Ted): Check if data=audio is desired.
+
+        self._timer.log_time_last_audio()
+
+    def __str__(self) -> str:
+        return f"{self.NAME}"
+
+
+class KittenSynthesizer(Synthesizer):
+    NAME = "Kitten TTS Nano 0.8 INT8"
+    SAMPLE_RATE = 24000
+    AUDIO_ENCODING = AudioEncodings.INT16  # TODO (Ted): Check this. It's likely wrong.
+    VOICE_ID = "Bella"  # available_voices : ['Bella', 'Jasper', 'Luna', 'Bruno', 'Rosie', 'Hugo', 'Kiki', 'Leo']
+
+    def __init__(
+            self,
+            **kwargs: Any,
+    ) -> None:
+        super().__init__(
+                sample_rate=self.SAMPLE_RATE,
+                audio_encoding=self.AUDIO_ENCODING,
+                **kwargs,
+        )
+
+        from kittentts import KittenTTS
+
+        self._model = KittenTTS("KittenML/kitten-tts-nano-0.8-int8")
+
+    def synthesize(
+            self,
+            text_stream: Generator[
+                str,
+                None,
+                None,
+            ],
+    ):
+        text = self._read_text_stream(text_stream)
+
+        if len(text) >= 400:
+            self._timer.skip_this_result = True
+            print("Text input length reached or exceeded 400! Which is a limit for Kitten-TTS. Skipping this sentence.")
+            return
+
+        self._timer.maybe_log_time_first_synthesis_request()
+
+        audio = self._model.generate(
+                text,
+                voice=self.VOICE_ID,
+        )
+
+        self._timer.maybe_log_time_first_audio()
+
+        self._audio_sink.add(data=audio)  # TODO (Ted): Check if data=audio is desired.
 
         self._timer.log_time_last_audio()
 

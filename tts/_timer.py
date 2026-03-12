@@ -12,6 +12,7 @@ class Timer:
     _time_last_audio: float = -1.0
 
     _num_tokens: int = 0
+    _skip_this_result: bool = False
 
     @staticmethod
     def _get_time() -> float:
@@ -67,7 +68,7 @@ class Timer:
         return self._num_tokens / (self._time_last_llm_token - self._time_first_llm_token)
 
     def wait_for_first_audio(self) -> None:
-        while self._time_first_audio == -1.0:
+        while self._time_first_audio == -1.0 and not self._skip_this_result:
             time.sleep(0.01)
 
     def wait_for_last_audio(self) -> None:
@@ -83,6 +84,18 @@ class Timer:
         self._time_last_audio = -1.0
 
         self._num_tokens = 0
+        self._skip_this_result = False
+
+    @property
+    def skip_this_result(self) -> bool:
+        return self._skip_this_result
+
+    @skip_this_result.setter
+    def skip_this_result(
+            self,
+            val: bool,
+    ):
+        self._skip_this_result = val
 
 
 __all__ = [

@@ -262,26 +262,31 @@ async def _run_benchmark_iteration(
 
     timer.wait_for_first_audio()
 
-    timing_result = TimingResult(
-        voice_assistant_response_time=timer.voice_assistant_response_time(),
-        time_to_first_token=timer.time_to_first_token(),
-        first_token_to_speech=timer.first_token_to_speech(),
-        tts_process_seconds=timer.tts_process_seconds(),
-        num_words=len(llm.last_response.split()),
-        num_tokens_per_second=timer.num_tokens_per_second())
-    stats.accumulate(timing_result=timing_result)
+    if not timer.skip_this_result:
+        timing_result = TimingResult(
+            voice_assistant_response_time=timer.voice_assistant_response_time(),
+            time_to_first_token=timer.time_to_first_token(),
+            first_token_to_speech=timer.first_token_to_speech(),
+            tts_process_seconds=timer.tts_process_seconds(),
+            num_words=len(llm.last_response.split()),
+            num_tokens_per_second=timer.num_tokens_per_second())
+        stats.accumulate(timing_result=timing_result)
 
-    if verbose:
-        print(f"Question: {sentence}")
-        print(f"LLM response: {llm.last_response}")
-        print(f"Voice Assistant Response Time: {timing_result.voice_assistant_response_time:.2f} s")
-        print(f"Time to First Token: {timing_result.time_to_first_token:.2f} s")
-        print(f"First Token to Speech: {timing_result.first_token_to_speech:.2f} s")
-        timer.wait_for_last_audio()
-        audio_path = os.path.join(results_folder, f"audio_{counter}.wav")
-        synthesizer.save_and_reset_last_audio(audio_path)
-        print(f"Saved audio to `{audio_path}`")
-        print()
+        if verbose:
+            print(f"Question: {sentence}")
+            print(f"LLM response: {llm.last_response}")
+            print(f"Voice Assistant Response Time: {timing_result.voice_assistant_response_time:.2f} s")
+            print(f"Time to First Token: {timing_result.time_to_first_token:.2f} s")
+            print(f"First Token to Speech: {timing_result.first_token_to_speech:.2f} s")
+            timer.wait_for_last_audio()
+            audio_path = os.path.join(results_folder, f"audio_{counter}.wav")
+            synthesizer.save_and_reset_last_audio(audio_path)
+            print(f"Saved audio to `{audio_path}`")
+            print()
+    else:
+        if verbose:
+            print("Error occurred for this sentence. Skip the result.")
+
 
 
 async def main(args: argparse.Namespace) -> None:
