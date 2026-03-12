@@ -21,6 +21,7 @@ import requests
 import websockets
 from openai import OpenAI
 from pvorca import OrcaActivationLimitError
+from kokoro import KPipeline
 
 from audio import AudioSink, AudioEncodings
 from ._timer import Timer
@@ -33,6 +34,7 @@ class Synthesizers(Enum):
     ELEVENLABS_WEBSOCKET = "elevenlabs_websocket"
     OPENAI_TTS = "openai_tts"
     PICOVOICE_ORCA = "picovoice_orca"
+    KOKORO_TTS = "kokoro_tts"
 
 
 class Synthesizer:
@@ -89,6 +91,7 @@ class Synthesizer:
             Synthesizers.ELEVENLABS_WEBSOCKET: ElevenLabsWebSocketSynthesizer,
             Synthesizers.OPENAI_TTS: OpenAISynthesizer,
             Synthesizers.PICOVOICE_ORCA: PicovoiceOrcaSynthesizer,
+            Synthesizers.KOKORO_TTS: KokoroSynthesizer,
         }
 
         if engine not in subclasses:
@@ -461,6 +464,71 @@ class PicovoiceOrcaSynthesizer(Synthesizer):
         self._close_thread_blocking()
         self._orca_stream.close()
         self._orca.delete()
+
+    def __str__(self) -> str:
+        return f"{self.NAME}"
+
+
+class KokoroSynthesizer(Synthesizer):
+    NAME = "Kokoro TTS"
+    SAMPLE_RATE = 24000
+    AUDIO_ENCODING = AudioEncodings.INT16  # TODO (Ted): Check this. It's likely wrong.
+    LANGUAGE_CODE = "a"  # Ted: For American English.
+    VOICE_ID = "af_heart"
+    SPEED = 1
+
+    def __init__(
+            self,
+            **kwargs: Any,
+    ) -> None:
+        super().__init__(
+                sample_rate=self.SAMPLE_RATE,
+                audio_encoding=self.AUDIO_ENCODING,
+                **kwargs,
+        )
+
+        self._pipeline = KPipeline(
+                lang_code=self.LANGUAGE_CODE,
+                device="cpu",  # TODO (Ted): Hard-coded for now!
+        ) # <= make sure lang_code matches voice, reference above.
+
+    def synthesize(
+            self,
+            text_stream: Generator[
+                str,
+                None,
+                None,
+            ],
+    ):
+        text = self._read_text_stream(text_stream)
+
+        self._timer.maybe_log_time_first_synthesis_request()
+
+        generator = self._pipeline(
+            text,
+            voice=self.VOICE_ID, # <= change voice here
+            speed=self.SPEED,
+            split_pattern=r'\n+',
+        )
+        # Alternatively, load voice tensor directly:
+        # voice_tensor = torch.load('path/to/voice.pt', weights_only=True)
+        # generator = pipeline(
+        #     text, voice=voice_tensor,
+        #     speed=1, split_pattern=r'\n+'
+        # )
+
+        for i, (gs, ps, audio) in enumerate(generator):
+            self._timer.maybe_log_time_first_audio()
+
+            # print(i)  # i => index
+            # print(gs) # gs => graphemes/text
+            # print(ps) # ps => phonemes
+            # display(Audio(data=audio, rate=24000, autoplay=i==0))
+            # sf.write(f'{i}.wav', audio, 24000) # save each audio file
+
+            self._audio_sink.add(data=audio)  # TODO (Ted): Check if data=audio is desired.
+
+        self._timer.log_time_last_audio()
 
     def __str__(self) -> str:
         return f"{self.NAME}"
