@@ -34,8 +34,9 @@ class Synthesizers(Enum):
     OPENAI_TTS = "openai_tts"
     PICOVOICE_ORCA = "picovoice_orca"
     KOKORO_TTS = "kokoro_tts"
-    CHATTERBOX_TTS_TURBO = "chatterbox_tts_turbo"  # TODO (Ted): Ask Ali if we should do Chatterbox-TTS or Chatterbox-TTS-Turbo.
+    CHATTERBOX_TTS_TURBO = "chatterbox_tts_turbo"  # TODO (Ted): There are actually two: Chatterbox-TTS or Chatterbox-TTS-Turbo.
     KITTEN_TTS = "kitten_tts"
+    POCKET_TTS = "pocket_tts"  # TODO (Ted): There are actually two: Kyutai-TTS (1.6B) that is dual streaming, and Pocket-TTS (100M) that is output streaming but not input streaming.
 
 
 class Synthesizer:
@@ -95,6 +96,7 @@ class Synthesizer:
             Synthesizers.KOKORO_TTS: KokoroSynthesizer,
             Synthesizers.CHATTERBOX_TTS_TURBO: ChatterboxTurboSynthesizer,
             Synthesizers.KITTEN_TTS: KittenSynthesizer,
+            Synthesizers.POCKET_TTS: PocketSynthesizer,
         }
 
         if engine not in subclasses:
@@ -627,6 +629,54 @@ class KittenSynthesizer(Synthesizer):
         self._timer.maybe_log_time_first_audio()
 
         self._audio_sink.add(data=audio)  # TODO (Ted): Check if data=audio is desired.
+
+        self._timer.log_time_last_audio()
+
+    def __str__(self) -> str:
+        return f"{self.NAME}"
+
+
+class PocketSynthesizer(Synthesizer):
+    NAME = "Pocket TTS"
+    SAMPLE_RATE = 24000
+    AUDIO_ENCODING = AudioEncodings.INT16  # TODO (Ted): Check this. It's likely wrong.
+
+    def __init__(
+            self,
+            **kwargs: Any,
+    ) -> None:
+        super().__init__(
+                sample_rate=self.SAMPLE_RATE,
+                audio_encoding=self.AUDIO_ENCODING,
+                **kwargs,
+        )
+
+        from pocket_tts import TTSModel  # TODO (Ted): To avoid different repos affecting each other. Currently using differen venv for each model due to incompatibility.
+
+        self._model = TTSModel.load_model()
+        self._voice_state = self._model.get_state_for_audio_prompt("alba")
+
+    def synthesize(
+            self,
+            text_stream: Generator[
+                str,
+                None,
+                None,
+            ],
+    ):
+        text = self._read_text_stream(text_stream)
+
+        self._timer.maybe_log_time_first_synthesis_request()
+
+        # Ted: Pocket-TTS is output streaming (but not input streaming!), so let's do that here! However, Kyutai-TTS (1.6B) is indeed dual streaming.
+        audio_chunks = self._model.generate_audio_stream(
+            model_state=self._voice_state,
+            text_to_generate=text,
+        )
+
+        for i, chunk in enumerate(audio_chunks):
+            self._timer.maybe_log_time_first_audio()
+            self._audio_sink.add(data=chunk)  # TODO (Ted): Check if data=audio is desired.
 
         self._timer.log_time_last_audio()
 
