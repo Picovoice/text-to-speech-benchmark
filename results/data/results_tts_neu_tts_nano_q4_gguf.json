@@ -1,0 +1,33 @@
+{
+    "total_sentences": 200,
+    "mean_voice_assistant_response_time": 2.629023299533874,
+    "mean_time_to_first_token": 0.07810716275474988,
+    "mean_first_token_to_speech": 2.550916136779124,
+    "mean_tts_process_seconds": 1.0355142816051375,
+    "mean_num_words": 76,
+    "mean_num_tokens_per_second": 65.4006334136979,
+    "mean_core_time": 118.58345000000001,
+    "mean_accumulated_audio_seconds": 12.0996,
+    "mean_core_hour_ratio": 9.83634822345342,
+    "std_voice_assistant_response_time": 0.6439357368669999,
+    "std_time_to_first_token": 0.001065855491902358,
+    "std_first_token_to_speech": 0.6438062142964478,
+    "std_tts_process_seconds": 0.10862189114185473,
+    "std_num_words": 26,
+    "std_num_tokens_per_second": 1.5693941738769992,
+    "std_core_time": 20.548748443579353,
+    "std_accumulated_audio_seconds": 2.26642799135556,
+    "std_core_hour_ratio": 0.354446743890339,
+    "peak_memory_dict": {
+        "100": 2060.7763671875,
+        "200": 2060.8603515625,
+        "300": 2061.6572265625,
+        "400": 2064.2626953125,
+        "500": 2058.7548828125,
+        "600": 2062.7763671875,
+        "700": 2058.98046875,
+        "800": 2071.89453125,
+        "900": 2071.615234375,
+        "1000": 2072.123046875
+    }
+}
