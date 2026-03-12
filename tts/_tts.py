@@ -21,7 +21,6 @@ import requests
 import websockets
 from openai import OpenAI
 from pvorca import OrcaActivationLimitError
-from kokoro import KPipeline
 
 from audio import AudioSink, AudioEncodings
 from ._timer import Timer
@@ -35,6 +34,7 @@ class Synthesizers(Enum):
     OPENAI_TTS = "openai_tts"
     PICOVOICE_ORCA = "picovoice_orca"
     KOKORO_TTS = "kokoro_tts"
+    CHATTERBOX_TTS_TURBO = "chatterbox_tts_turbo"  # TODO (Ted): Ask Ali if we should do Chatterbox-TTS or Chatterbox-TTS-Turbo.
 
 
 class Synthesizer:
@@ -92,6 +92,7 @@ class Synthesizer:
             Synthesizers.OPENAI_TTS: OpenAISynthesizer,
             Synthesizers.PICOVOICE_ORCA: PicovoiceOrcaSynthesizer,
             Synthesizers.KOKORO_TTS: KokoroSynthesizer,
+            Synthesizers.CHATTERBOX_TTS_TURBO: ChatterboxTurboSynthesizer,
         }
 
         if engine not in subclasses:
@@ -487,9 +488,11 @@ class KokoroSynthesizer(Synthesizer):
                 **kwargs,
         )
 
+        from kokoro import KPipeline  # TODO (Ted): To avoid different repos affecting each other. Currently using differen venv for each model due to incompatibility.
+
         self._pipeline = KPipeline(
                 lang_code=self.LANGUAGE_CODE,
-                device="cpu",  # TODO (Ted): Hard-coded for now!
+                # device="cpu",  # TODO (Ted): Hard-coded for now!
         ) # <= make sure lang_code matches voice, reference above.
 
     def synthesize(
@@ -527,6 +530,49 @@ class KokoroSynthesizer(Synthesizer):
             # sf.write(f'{i}.wav', audio, 24000) # save each audio file
 
             self._audio_sink.add(data=audio)  # TODO (Ted): Check if data=audio is desired.
+
+        self._timer.log_time_last_audio()
+
+    def __str__(self) -> str:
+        return f"{self.NAME}"
+
+
+class ChatterboxTurboSynthesizer(Synthesizer):
+    NAME = "Chatterbox TTS Turbo"
+    SAMPLE_RATE = 24000
+    AUDIO_ENCODING = AudioEncodings.INT16  # TODO (Ted): Check this. It's likely wrong.
+
+    def __init__(
+            self,
+            **kwargs: Any,
+    ) -> None:
+        super().__init__(
+                sample_rate=self.SAMPLE_RATE,
+                audio_encoding=self.AUDIO_ENCODING,
+                **kwargs,
+        )
+
+        from chatterbox.tts_turbo import ChatterboxTurboTTS
+
+        self._model = ChatterboxTurboTTS.from_pretrained(device="cuda")
+
+    def synthesize(
+            self,
+            text_stream: Generator[
+                str,
+                None,
+                None,
+            ],
+    ):
+        text = self._read_text_stream(text_stream)
+
+        self._timer.maybe_log_time_first_synthesis_request()
+
+        wav = self._model.generate(text)
+
+        self._timer.maybe_log_time_first_audio()
+
+        self._audio_sink.add(data=wav)  # TODO (Ted): Check if data=audio is desired.
 
         self._timer.log_time_last_audio()
 
