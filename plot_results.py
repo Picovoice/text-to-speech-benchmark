@@ -29,7 +29,8 @@ GREY4 = rgb_from_hex("#9F9F9F")
 GREY5 = rgb_from_hex("#BFBFBF")
 WHITE = rgb_from_hex("#FFFFFF")
 BLUE = rgb_from_hex("#377DFF")
-COLOR_X = rgb_from_hex("#686868")
+COLOR_KOKORO_TTS = rgb_from_hex("#686868")
+COLOR_CHATTERBOX_TTS_TURBO = rgb_from_hex("#4F4F4F")
 
 ENGINE_PRINT_NAMES = {
     Synthesizers.AMAZON_POLLY: 'Amazon Polly',
@@ -39,6 +40,7 @@ ENGINE_PRINT_NAMES = {
     Synthesizers.OPENAI_TTS: 'OpenAI TTS',
     Synthesizers.PICOVOICE_ORCA: 'Picovoice\nOrca',
     Synthesizers.KOKORO_TTS: "Kokoro TTS",
+    Synthesizers.CHATTERBOX_TTS_TURBO: "Chatterbox TTS\nTurbo",
 }
 
 ENGINE_COLORS = {
@@ -48,7 +50,8 @@ ENGINE_COLORS = {
     Synthesizers.ELEVENLABS_WEBSOCKET: GREY3,
     Synthesizers.OPENAI_TTS: GREY4,
     Synthesizers.PICOVOICE_ORCA: BLUE,
-    Synthesizers.KOKORO_TTS: COLOR_X,
+    Synthesizers.KOKORO_TTS: COLOR_KOKORO_TTS,
+    Synthesizers.CHATTERBOX_TTS_TURBO: COLOR_CHATTERBOX_TTS_TURBO,
 }
 
 
