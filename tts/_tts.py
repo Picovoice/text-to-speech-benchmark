@@ -568,7 +568,7 @@ class ChatterboxTurboSynthesizer(Synthesizer):
 
         self._timer.maybe_log_time_first_synthesis_request()
 
-        wav = self._model.generate(text)
+        wav = self._model.generate(text).squeeze(0)
 
         self._timer.maybe_log_time_first_audio()
 
