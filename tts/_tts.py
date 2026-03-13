@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import os
+import subprocess
 import asyncio
 import base64
 import json
@@ -45,6 +46,7 @@ class Synthesizers(Enum):
     PIPER_TTS = "piper_tts"
     SOPRANO_TTS = "soprano_tts"
     SUPERTONIC_TTS_2 = "supertonic_tts_2"
+    ESPEAK_NG = "espeak_ng"
 
 class Synthesizer:
     def __init__(
@@ -108,6 +110,7 @@ class Synthesizer:
             Synthesizers.PIPER_TTS: PiperSynthesizer,
             Synthesizers.SOPRANO_TTS: SopranoSynthesizer,
             Synthesizers.SUPERTONIC_TTS_2: Supertonic2Synthesizer,
+            Synthesizers.ESPEAK_NG: EspeakNGSynthesizer,
         }
 
         if engine not in subclasses:
@@ -507,7 +510,7 @@ class KokoroSynthesizer(Synthesizer):
 
         self._pipeline = KPipeline(
                 lang_code=self.LANGUAGE_CODE,
-                # device="cpu",  # TODO (Ted): Hard-coded for now!
+                device="cpu",
         ) # <= make sure lang_code matches voice, reference above.
 
     def synthesize(
@@ -569,7 +572,7 @@ class ChatterboxTurboSynthesizer(Synthesizer):
 
         from chatterbox.tts_turbo import ChatterboxTurboTTS
 
-        self._model = ChatterboxTurboTTS.from_pretrained(device="cuda")
+        self._model = ChatterboxTurboTTS.from_pretrained(device="cpu")
 
     def synthesize(
             self,
@@ -918,6 +921,63 @@ class Supertonic2Synthesizer(Synthesizer):
         self._timer.maybe_log_time_first_audio()
 
         self._audio_sink.add(data=np.squeeze(wav, axis=0))  # TODO (Ted): Check if data=audio is desired.
+
+        self._timer.log_time_last_audio()
+
+    def __str__(self) -> str:
+        return f"{self.NAME}"
+
+
+class EspeakNGSynthesizer(Synthesizer):
+    NAME = "Espeak NG"
+    SAMPLE_RATE = 22050
+    AUDIO_ENCODING = AudioEncodings.BYTES  # TODO (Ted): Check this. It's likely wrong.
+    CHUNK_SIZE_MAX_BYTES = 4096
+
+    def __init__(
+            self,
+            **kwargs: Any,
+    ) -> None:
+        super().__init__(
+                sample_rate=self.SAMPLE_RATE,
+                audio_encoding=self.AUDIO_ENCODING,
+                **kwargs,
+        )
+
+    def synthesize(
+            self,
+            text_stream: Generator[
+                str,
+                None,
+                None,
+            ],
+    ):
+        text = self._read_text_stream(text_stream)
+
+        self._timer.maybe_log_time_first_synthesis_request()
+
+        cmd = [
+            "espeak-ng",
+            "--stdout",
+            text,
+        ]
+
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            bufsize=0
+        )
+
+        while True:
+            chunk = process.stdout.read(self.CHUNK_SIZE_MAX_BYTES)
+
+            self._timer.maybe_log_time_first_audio()
+
+            if not chunk:
+                break
+
+            self._audio_sink.add(data=chunk)  # TODO (Ted): Check if data=audio is desired.
 
         self._timer.log_time_last_audio()
 

@@ -37,6 +37,7 @@ COLOR_NEU_TTS_NANO_Q4_GGUF = rgb_from_hex("#929292")
 COLOR_PIPER_TTS = rgb_from_hex("#929292")
 COLOR_SOPRANO_TTS = rgb_from_hex("#151515")
 COLOR_SUPERTONIC_TTS_2 = rgb_from_hex("#707070")
+COLOR_ESPEAK_NG = rgb_from_hex("#363636")
 
 ENGINE_PRINT_NAMES = {
     Synthesizers.AMAZON_POLLY: 'Amazon\nPolly',
@@ -53,6 +54,7 @@ ENGINE_PRINT_NAMES = {
     Synthesizers.PIPER_TTS: "Piper\nTTS",
     Synthesizers.SOPRANO_TTS: "Soprano\nTTS",
     Synthesizers.SUPERTONIC_TTS_2: "Supertonic\nTTS 2",
+    Synthesizers.ESPEAK_NG: "ESPEAK\nNG",
 }
 
 ENGINE_COLORS = {
@@ -70,6 +72,7 @@ ENGINE_COLORS = {
     Synthesizers.PIPER_TTS: COLOR_PIPER_TTS,
     Synthesizers.SOPRANO_TTS: COLOR_SOPRANO_TTS,
     Synthesizers.SUPERTONIC_TTS_2: COLOR_SUPERTONIC_TTS_2,
+    Synthesizers.ESPEAK_NG: COLOR_ESPEAK_NG,
 }
 
 
@@ -187,7 +190,7 @@ def _plot(
 
     y_max = max_delay + (max_delay / 3) if show_error_bars else max_delay + (max_delay / 6)
     plt.ylim(0, y_max)
-    plt.xticks(np.arange(0, len(rounded_results)), [ENGINE_PRINT_NAMES[x[0]] for x in results], fontsize=12)
+    plt.xticks(np.arange(0, len(rounded_results)), [ENGINE_PRINT_NAMES[x[0]] for x in results], fontsize=8)
     y_arange = np.arange(0, y_max, 500)
     plt.yticks(y_arange, [f"{x:.0f}" for x in y_arange])
     metric = "Voice Assistant Response Time" if not only_tts else "First Token to Speech"
