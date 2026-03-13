@@ -44,6 +44,7 @@ class Synthesizers(Enum):
     NEU_TTS_NANO_Q4_GGUF = "neu_tts_nano_q4_gguf"  # TODO (Ted): There is actually another one "Neu-TTS-Air".
     PIPER_TTS = "piper_tts"
     SOPRANO_TTS = "soprano_tts"
+    SUPERTONIC_TTS_2 = "supertonic_tts_2"
 
 class Synthesizer:
     def __init__(
@@ -106,6 +107,7 @@ class Synthesizer:
             Synthesizers.NEU_TTS_NANO_Q4_GGUF: NeuTTSNanoSynthesizer,
             Synthesizers.PIPER_TTS: PiperSynthesizer,
             Synthesizers.SOPRANO_TTS: SopranoSynthesizer,
+            Synthesizers.SUPERTONIC_TTS_2: Supertonic2Synthesizer,
         }
 
         if engine not in subclasses:
@@ -851,6 +853,71 @@ class SopranoSynthesizer(Synthesizer):
                 chunk = chunk[0]
 
             self._audio_sink.add(data=chunk)  # TODO (Ted): Check if data=audio is desired.
+
+        self._timer.log_time_last_audio()
+
+    def __str__(self) -> str:
+        return f"{self.NAME}"
+
+
+class Supertonic2Synthesizer(Synthesizer):
+    NAME = "Supertonic TTS 2"
+    SAMPLE_RATE = 44100
+    AUDIO_ENCODING = AudioEncodings.INT16  # TODO (Ted): Check this. It's likely wrong.
+    ONNX_DIR = "/home/pear/work/gitlab/supertonic/assets/onnx"
+    USE_GPU = False
+    VOICE_STYLE_PATHS = ["/home/pear/work/gitlab/supertonic/py/assets/voice_styles/M1.json"]
+    LANGUAGE_CODE = "en"
+    TOTAL_STEP = 5
+    SPEED = 1.05
+
+    def __init__(
+            self,
+            **kwargs: Any,
+    ) -> None:
+        super().__init__(
+                sample_rate=self.SAMPLE_RATE,
+                audio_encoding=self.AUDIO_ENCODING,
+                **kwargs,
+        )
+
+        import sys
+        sys.path.append("/home/pear/work/gitlab/")
+
+        from supertonic.py.helper import load_text_to_speech, load_voice_style
+
+        self._text_to_speech = load_text_to_speech(
+                self.ONNX_DIR,
+                self.USE_GPU,
+        )
+        self._style = load_voice_style(
+                self.VOICE_STYLE_PATHS,
+                verbose=True,
+        )
+
+    def synthesize(
+            self,
+            text_stream: Generator[
+                str,
+                None,
+                None,
+            ],
+    ):
+        text = self._read_text_stream(text_stream)
+
+        self._timer.maybe_log_time_first_synthesis_request()
+
+        wav, duration = self._text_to_speech(
+            text,
+            self.LANGUAGE_CODE,
+            self._style,
+            self.TOTAL_STEP,
+            self.SPEED,
+        )
+
+        self._timer.maybe_log_time_first_audio()
+
+        self._audio_sink.add(data=np.squeeze(wav, axis=0))  # TODO (Ted): Check if data=audio is desired.
 
         self._timer.log_time_last_audio()
 

@@ -36,6 +36,7 @@ COLOR_POCKET_TTS = rgb_from_hex("#808080")
 COLOR_NEU_TTS_NANO_Q4_GGUF = rgb_from_hex("#929292")
 COLOR_PIPER_TTS = rgb_from_hex("#929292")
 COLOR_SOPRANO_TTS = rgb_from_hex("#151515")
+COLOR_SUPERTONIC_TTS_2 = rgb_from_hex("#707070")
 
 ENGINE_PRINT_NAMES = {
     Synthesizers.AMAZON_POLLY: 'Amazon\nPolly',
@@ -51,6 +52,7 @@ ENGINE_PRINT_NAMES = {
     Synthesizers.NEU_TTS_NANO_Q4_GGUF: "Neu TTS\nNano\nQ4 GGUF",
     Synthesizers.PIPER_TTS: "Piper\nTTS",
     Synthesizers.SOPRANO_TTS: "Soprano\nTTS",
+    Synthesizers.SUPERTONIC_TTS_2: "Supertonic\nTTS 2",
 }
 
 ENGINE_COLORS = {
@@ -67,6 +69,7 @@ ENGINE_COLORS = {
     Synthesizers.NEU_TTS_NANO_Q4_GGUF: COLOR_NEU_TTS_NANO_Q4_GGUF,
     Synthesizers.PIPER_TTS: COLOR_PIPER_TTS,
     Synthesizers.SOPRANO_TTS: COLOR_SOPRANO_TTS,
+    Synthesizers.SUPERTONIC_TTS_2: COLOR_SUPERTONIC_TTS_2,
 }
 
 
