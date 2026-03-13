@@ -42,7 +42,7 @@ class Synthesizers(Enum):
     KITTEN_TTS = "kitten_tts"
     POCKET_TTS = "pocket_tts"  # TODO (Ted): There are actually two: Kyutai-TTS (1.6B) that is dual streaming, and Pocket-TTS (100M) that is output streaming but not input streaming.
     NEU_TTS_NANO_Q4_GGUF = "neu_tts_nano_q4_gguf"  # TODO (Ted): There is actually another one "Neu-TTS-Air".
-
+    PIPER_TTS = "piper_tts"
 
 class Synthesizer:
     def __init__(
@@ -103,6 +103,7 @@ class Synthesizer:
             Synthesizers.KITTEN_TTS: KittenSynthesizer,
             Synthesizers.POCKET_TTS: PocketSynthesizer,
             Synthesizers.NEU_TTS_NANO_Q4_GGUF: NeuTTSNanoSynthesizer,
+            Synthesizers.PIPER_TTS: PiperSynthesizer,
         }
 
         if engine not in subclasses:
@@ -747,6 +748,51 @@ class NeuTTSNanoSynthesizer(Synthesizer):
             audio = (chunk * 32767).astype(np.int16)
 
             self._audio_sink.add(data=audio)  # TODO (Ted): Check if data=audio is desired.
+
+        self._timer.log_time_last_audio()
+
+    def __str__(self) -> str:
+        return f"{self.NAME}"
+
+
+class PiperSynthesizer(Synthesizer):
+    NAME = "Piper TTS"
+    SAMPLE_RATE = 16000  # TODO (Ted): Double check this because some models of Piper-TTS might also use 16000 or 22050.
+    AUDIO_ENCODING = AudioEncodings.INT16  # TODO (Ted): Check this. It's likely wrong.
+    MODEL_PATH = "/home/pear/work/github/tts-latency-benchmark/piper_tts_voices/en_US-lessac-low.onnx"
+
+    def __init__(
+            self,
+            **kwargs: Any,
+    ) -> None:
+        super().__init__(
+                sample_rate=self.SAMPLE_RATE,
+                audio_encoding=self.AUDIO_ENCODING,
+                **kwargs,
+        )
+
+        from piper.voice import PiperVoice as piper
+
+        self._model = piper.load(self.MODEL_PATH)
+
+    def synthesize(
+            self,
+            text_stream: Generator[
+                str,
+                None,
+                None,
+            ],
+    ):
+        text = self._read_text_stream(text_stream)
+
+        self._timer.maybe_log_time_first_synthesis_request()
+
+        chunks = self._model.synthesize(text)
+
+        for chunk in chunks:
+            self._timer.maybe_log_time_first_audio()
+
+            self._audio_sink.add(data=chunk.audio_float_array)  # TODO (Ted): Check if data=audio is desired.
 
         self._timer.log_time_last_audio()
 
