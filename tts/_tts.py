@@ -1,3 +1,6 @@
+import numpy as np
+import torch
+import os
 import asyncio
 import base64
 import json
@@ -26,6 +29,7 @@ from audio import AudioSink, AudioEncodings
 from ._timer import Timer
 
 
+
 class Synthesizers(Enum):
     AZURE_TTS = "azure_tts"
     AMAZON_POLLY = "amazon_polly"
@@ -37,6 +41,7 @@ class Synthesizers(Enum):
     CHATTERBOX_TTS_TURBO = "chatterbox_tts_turbo"  # TODO (Ted): There are actually two: Chatterbox-TTS or Chatterbox-TTS-Turbo.
     KITTEN_TTS = "kitten_tts"
     POCKET_TTS = "pocket_tts"  # TODO (Ted): There are actually two: Kyutai-TTS (1.6B) that is dual streaming, and Pocket-TTS (100M) that is output streaming but not input streaming.
+    NEU_TTS_NANO_Q4_GGUF = "neu_tts_nano_q4_gguf"  # TODO (Ted): There is actually another one "Neu-TTS-Air".
 
 
 class Synthesizer:
@@ -97,6 +102,7 @@ class Synthesizer:
             Synthesizers.CHATTERBOX_TTS_TURBO: ChatterboxTurboSynthesizer,
             Synthesizers.KITTEN_TTS: KittenSynthesizer,
             Synthesizers.POCKET_TTS: PocketSynthesizer,
+            Synthesizers.NEU_TTS_NANO_Q4_GGUF: NeuTTSNanoSynthesizer,
         }
 
         if engine not in subclasses:
@@ -677,6 +683,70 @@ class PocketSynthesizer(Synthesizer):
         for i, chunk in enumerate(audio_chunks):
             self._timer.maybe_log_time_first_audio()
             self._audio_sink.add(data=chunk)  # TODO (Ted): Check if data=audio is desired.
+
+        self._timer.log_time_last_audio()
+
+    def __str__(self) -> str:
+        return f"{self.NAME}"
+
+
+class NeuTTSNanoSynthesizer(Synthesizer):
+    NAME = "NeuTTS Nano"
+    SAMPLE_RATE = 24000
+    AUDIO_ENCODING = AudioEncodings.INT16  # TODO (Ted): Check this. It's likely wrong.
+    BACKBONE_REPO = "neuphonic/neutts-nano-q4-gguf"
+    CODEC_REPO = "neuphonic/neucodec-onnx-decoder"
+    REF_TEXT_PATH = "/home/pear/work/gitlab/neutts/samples/jo.txt"
+    REF_CODES_PATH = "/home/pear/work/gitlab/neutts/samples/jo.pt"
+
+    def __init__(
+            self,
+            **kwargs: Any,
+    ) -> None:
+        super().__init__(
+                sample_rate=self.SAMPLE_RATE,
+                audio_encoding=self.AUDIO_ENCODING,
+                **kwargs,
+        )
+
+        from neutts import NeuTTS
+
+        self._model = NeuTTS(
+            backbone_repo=self.BACKBONE_REPO,
+            codec_repo=self.CODEC_REPO,
+        )
+
+        self._ref_text = self._read_if_path(self.REF_TEXT_PATH)
+
+        assert os.path.exists(self.REF_CODES_PATH)
+        self._ref_codes = torch.load(self.REF_CODES_PATH)
+
+    @staticmethod
+    def _read_if_path(value: str) -> str:
+        return open(value, "r", encoding="utf-8").read().strip() if os.path.exists(value) else value
+
+    def synthesize(
+            self,
+            text_stream: Generator[
+                str,
+                None,
+                None,
+            ],
+    ):
+        input_text = self._read_text_stream(text_stream)
+
+        self._timer.maybe_log_time_first_synthesis_request()
+
+        for chunk in self._model.infer_stream(
+                text=input_text,
+                ref_codes=self._ref_codes,
+                ref_text=self._ref_text,
+        ):
+            self._timer.maybe_log_time_first_audio()
+
+            audio = (chunk * 32767).astype(np.int16)
+
+            self._audio_sink.add(data=audio)  # TODO (Ted): Check if data=audio is desired.
 
         self._timer.log_time_last_audio()
 
