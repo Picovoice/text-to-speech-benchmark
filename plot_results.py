@@ -33,6 +33,7 @@ COLOR_KOKORO_TTS = rgb_from_hex("#686868")
 COLOR_CHATTERBOX_TTS_TURBO = rgb_from_hex("#4F4F4F")
 COLOR_KITTEN_TTS = rgb_from_hex("#515151")
 COLOR_POCKET_TTS = rgb_from_hex("#808080")
+COLOR_NEU_TTS_NANO_Q4_GGUF = rgb_from_hex("#929292")
 
 ENGINE_PRINT_NAMES = {
     Synthesizers.AMAZON_POLLY: 'Amazon Polly',
@@ -45,6 +46,7 @@ ENGINE_PRINT_NAMES = {
     Synthesizers.CHATTERBOX_TTS_TURBO: "Chatterbox TTS\nTurbo",
     Synthesizers.KITTEN_TTS: "Kitten TTS\nNano 0.8 INT8",
     Synthesizers.POCKET_TTS: "Pocket TTS",
+    Synthesizers.NEU_TTS_NANO_Q4_GGUF: "Neu TTS\nNano\nQ4 GGUF",
 }
 
 ENGINE_COLORS = {
@@ -58,6 +60,7 @@ ENGINE_COLORS = {
     Synthesizers.CHATTERBOX_TTS_TURBO: COLOR_CHATTERBOX_TTS_TURBO,
     Synthesizers.KITTEN_TTS: COLOR_KITTEN_TTS,
     Synthesizers.POCKET_TTS: COLOR_POCKET_TTS,
+    Synthesizers.NEU_TTS_NANO_Q4_GGUF: COLOR_NEU_TTS_NANO_Q4_GGUF,
 }
 
 
