@@ -37,16 +37,16 @@ COLOR_NEU_TTS_NANO_Q4_GGUF = rgb_from_hex("#929292")
 COLOR_PIPER_TTS = rgb_from_hex("#929292")
 
 ENGINE_PRINT_NAMES = {
-    Synthesizers.AMAZON_POLLY: 'Amazon Polly',
-    Synthesizers.AZURE_TTS: 'Azure TTS',
+    Synthesizers.AMAZON_POLLY: 'Amazon\nPolly',
+    Synthesizers.AZURE_TTS: 'Azure\nTTS',
     Synthesizers.ELEVENLABS: 'ElevenLabs',
-    Synthesizers.ELEVENLABS_WEBSOCKET: 'ElevenLabs\nStreaming Text',
-    Synthesizers.OPENAI_TTS: 'OpenAI TTS',
+    Synthesizers.ELEVENLABS_WEBSOCKET: 'ElevenLabs\nStreaming\nText',
+    Synthesizers.OPENAI_TTS: 'OpenAI\nTTS',
     Synthesizers.PICOVOICE_ORCA: 'Picovoice\nOrca',
-    Synthesizers.KOKORO_TTS: "Kokoro TTS",
-    Synthesizers.CHATTERBOX_TTS_TURBO: "Chatterbox TTS\nTurbo",
-    Synthesizers.KITTEN_TTS: "Kitten TTS\nNano 0.8 INT8",
-    Synthesizers.POCKET_TTS: "Pocket TTS",
+    Synthesizers.KOKORO_TTS: "Kokoro\nTTS",
+    Synthesizers.CHATTERBOX_TTS_TURBO: "Chatterbox\nTTS\nTurbo",
+    Synthesizers.KITTEN_TTS: "Kitten\nTTS Nano\n0.8 INT8",
+    Synthesizers.POCKET_TTS: "Pocket\nTTS",
     Synthesizers.NEU_TTS_NANO_Q4_GGUF: "Neu TTS\nNano\nQ4 GGUF",
     Synthesizers.PIPER_TTS: "Piper TTS",
 }
