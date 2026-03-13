@@ -35,6 +35,7 @@ COLOR_KITTEN_TTS = rgb_from_hex("#515151")
 COLOR_POCKET_TTS = rgb_from_hex("#808080")
 COLOR_NEU_TTS_NANO_Q4_GGUF = rgb_from_hex("#929292")
 COLOR_PIPER_TTS = rgb_from_hex("#929292")
+COLOR_SOPRANO_TTS = rgb_from_hex("#151515")
 
 ENGINE_PRINT_NAMES = {
     Synthesizers.AMAZON_POLLY: 'Amazon\nPolly',
@@ -48,7 +49,8 @@ ENGINE_PRINT_NAMES = {
     Synthesizers.KITTEN_TTS: "Kitten\nTTS Nano\n0.8 INT8",
     Synthesizers.POCKET_TTS: "Pocket\nTTS",
     Synthesizers.NEU_TTS_NANO_Q4_GGUF: "Neu TTS\nNano\nQ4 GGUF",
-    Synthesizers.PIPER_TTS: "Piper TTS",
+    Synthesizers.PIPER_TTS: "Piper\nTTS",
+    Synthesizers.SOPRANO_TTS: "Soprano\nTTS",
 }
 
 ENGINE_COLORS = {
@@ -64,6 +66,7 @@ ENGINE_COLORS = {
     Synthesizers.POCKET_TTS: COLOR_POCKET_TTS,
     Synthesizers.NEU_TTS_NANO_Q4_GGUF: COLOR_NEU_TTS_NANO_Q4_GGUF,
     Synthesizers.PIPER_TTS: COLOR_PIPER_TTS,
+    Synthesizers.SOPRANO_TTS: COLOR_SOPRANO_TTS,
 }
 
 

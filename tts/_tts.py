@@ -43,6 +43,7 @@ class Synthesizers(Enum):
     POCKET_TTS = "pocket_tts"  # TODO (Ted): There are actually two: Kyutai-TTS (1.6B) that is dual streaming, and Pocket-TTS (100M) that is output streaming but not input streaming.
     NEU_TTS_NANO_Q4_GGUF = "neu_tts_nano_q4_gguf"  # TODO (Ted): There is actually another one "Neu-TTS-Air".
     PIPER_TTS = "piper_tts"
+    SOPRANO_TTS = "soprano_tts"
 
 class Synthesizer:
     def __init__(
@@ -104,6 +105,7 @@ class Synthesizer:
             Synthesizers.POCKET_TTS: PocketSynthesizer,
             Synthesizers.NEU_TTS_NANO_Q4_GGUF: NeuTTSNanoSynthesizer,
             Synthesizers.PIPER_TTS: PiperSynthesizer,
+            Synthesizers.SOPRANO_TTS: SopranoSynthesizer,
         }
 
         if engine not in subclasses:
@@ -793,6 +795,62 @@ class PiperSynthesizer(Synthesizer):
             self._timer.maybe_log_time_first_audio()
 
             self._audio_sink.add(data=chunk.audio_float_array)  # TODO (Ted): Check if data=audio is desired.
+
+        self._timer.log_time_last_audio()
+
+    def __str__(self) -> str:
+        return f"{self.NAME}"
+
+
+class SopranoSynthesizer(Synthesizer):
+    NAME = "Soprano TTS"
+    SAMPLE_RATE = 32000
+    AUDIO_ENCODING = AudioEncodings.INT16  # TODO (Ted): Check this. It's likely wrong.
+
+    def __init__(
+            self,
+            **kwargs: Any,
+    ) -> None:
+        super().__init__(
+                sample_rate=self.SAMPLE_RATE,
+                audio_encoding=self.AUDIO_ENCODING,
+                **kwargs,
+        )
+
+        from soprano import SopranoTTS
+
+        self._model = SopranoTTS(
+                backend='auto',  # Ted: According to Soprano-TTS codebase, it will use "transformers" backend if device is "CPU".
+                device="cpu",  # Ted: Because Ali want all tts-latency-benchmark to be running on CPU, doesn't matter their core usage.
+        )
+
+    def synthesize(
+            self,
+            text_stream: Generator[
+                str,
+                None,
+                None,
+            ],
+    ):
+        text = self._read_text_stream(text_stream)
+
+        self._timer.maybe_log_time_first_synthesis_request()
+
+        stream = self._model.infer_stream(
+                text,
+        )
+
+        for chunk in stream:
+            self._timer.maybe_log_time_first_audio()
+
+            if isinstance(chunk, torch.Tensor):
+                chunk = chunk.detach().cpu()
+
+            # Ensure shape (N)
+            if chunk.dim() == 2 and chunk.shape[0] == 1:
+                chunk = chunk[0]
+
+            self._audio_sink.add(data=chunk)  # TODO (Ted): Check if data=audio is desired.
 
         self._timer.log_time_last_audio()
 
