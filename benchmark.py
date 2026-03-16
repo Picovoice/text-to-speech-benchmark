@@ -239,6 +239,30 @@ def get_synthesizer_init_kwargs(args: argparse.Namespace) -> Dict[str, str]:
                 f"An OpenAI access key is required when using OpenAI models. Specify with `--openai-api-key`.")
         kwargs["api_key"] = args.openai_api_key
 
+    elif synthesizer_type is Synthesizers.NEU_TTS_NANO_Q4_GGUF:
+        if args.neutts_ref_text_path is None:
+            raise ValueError(
+                    f"Neu-TTS Nano Q4 GGUF requires the path to reference text. Specify with `--neutts-ref-text-path`.")
+        kwargs["ref_text_path"] = args.neutts_ref_text_path
+        if args.neutts_ref_codes_path is None:
+            raise ValueError(
+                    f"Neu-TTS Nano Q4 GGUF requires the path to reference codes. Specify with `--neutts-ref-codes-path`.")
+        kwargs["ref_codes_path"] = args.neutts_ref_codes_path
+    elif synthesizer_type is Synthesizers.PIPER_TTS:
+        if args.pipertts_model_path is None:
+            raise ValueError(
+                    f"Piper-TTS requires the model path. Specify with `--pipertts-model-path`.")
+        kwargs["model_path"] = args.pipertts_model_path
+    elif synthesizer_type is Synthesizers.SUPERTONIC_TTS_2:
+        if args.supertonictts_onnx_dir is None:
+            raise ValueError(
+                    f"Supertonic-TTS-2 requires the path to onnx directory. Specify with `--supertonictts-onnx-dir`.")
+        kwargs["onnx_dir"] = args.supertonictts_onnx_dir
+        if args.supertonictts_voice_style_path is None:
+            raise ValueError(
+                    f"Supertonic-TTS-2 requires the path to voice style. Specify with `--supertonictts-voice-style-path`.")
+        kwargs["voice_style_path"] = args.supertonictts_voice_style_path
+
     return kwargs
 
 
@@ -389,6 +413,36 @@ if __name__ == "__main__":
         "--elevenlabs-api-key",
         default=None,
         help="Elevenlabs API key")
+
+    parser.add_argument(
+            "--neutts-ref-text-path",
+            default=None,
+            help="Neu-TTS Nano Q4 GGUF path to reference text.",
+    )
+
+    parser.add_argument(
+            "--neutts-ref-codes-path",
+            default=None,
+            help="Neu-TTS Nano Q4 GGUF path to reference codes.",
+    )
+
+    parser.add_argument(
+            "--pipertts-model-path",
+            default=None,
+            help="Piper-TTS model path.",
+    )
+
+    parser.add_argument(
+            "--supertonictts-onnx-dir",
+            default=None,
+            help="Supertonic-TTS-2 path to ONNX directory.",
+    )
+
+    parser.add_argument(
+            "--supertonictts-voice-style-path",
+            default=None,
+            help="Supertonic-TTS-2 path to voice style.",
+    )
 
     parser.add_argument(
         "--num-interactions",

@@ -723,13 +723,13 @@ class NeuTTSNanoSynthesizer(Synthesizer):
     NAME = "NeuTTS Nano"
     SAMPLE_RATE = 24000
     AUDIO_ENCODING = AudioEncodings.INT16
-    BACKBONE_REPO = "neuphonic/neutts-nano-q4-gguf"
-    CODEC_REPO = "neuphonic/neucodec-onnx-decoder"
-    REF_TEXT_PATH = "/home/pear/work/gitlab/neutts/samples/jo.txt"
-    REF_CODES_PATH = "/home/pear/work/gitlab/neutts/samples/jo.pt"
+    BACKBONE_ID = "neuphonic/neutts-nano-q4-gguf"
+    CODEC_ID = "neuphonic/neucodec-onnx-decoder"
 
     def __init__(
             self,
+            ref_text_path: str,
+            ref_codes_path: str,
             **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -741,13 +741,13 @@ class NeuTTSNanoSynthesizer(Synthesizer):
         from neutts import NeuTTS
 
         self._model = NeuTTS(
-            backbone_repo=self.BACKBONE_REPO,
-            codec_repo=self.CODEC_REPO,
+            backbone_repo=self.BACKBONE_ID,
+            codec_repo=self.CODEC_ID,
         )
 
-        self._ref_text = self._read_if_path(self.REF_TEXT_PATH)
+        self._ref_text = self._read_if_path(ref_text_path)
 
-        self._ref_codes = torch.load(self.REF_CODES_PATH)
+        self._ref_codes = torch.load(ref_codes_path)
 
     @staticmethod
     def _read_if_path(value: str) -> str:
@@ -791,10 +791,10 @@ class PiperSynthesizer(Synthesizer):
     NAME = "Piper TTS"
     SAMPLE_RATE = 16000
     AUDIO_ENCODING = AudioEncodings.INT16
-    MODEL_PATH = "/home/pear/work/github/tts-latency-benchmark/piper_tts_voices/en_US-lessac-low.onnx"
 
     def __init__(
             self,
+            model_path: str,
             **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -805,7 +805,7 @@ class PiperSynthesizer(Synthesizer):
 
         from piper.voice import PiperVoice as piper
 
-        self._model = piper.load(self.MODEL_PATH)
+        self._model = piper.load(model_path)
 
     def synthesize(
             self,
@@ -909,17 +909,14 @@ class Supertonic2Synthesizer(Synthesizer):
     SAMPLE_RATE = 44100
     AUDIO_ENCODING = AudioEncodings.INT16
     USE_GPU = False
-    # TODO (Ted): Future below below 2 lines.
-    ONNX_DIR = "/home/pear/work/gitlab/supertonic/assets/onnx"
-    VOICE_STYLE_PATHS = ["/home/pear/work/gitlab/supertonic/py/assets/voice_styles/M1.json"]
     LANGUAGE_CODE = "en"
     TOTAL_STEP = 5
     SPEED = 1.05
 
     def __init__(
             self,
-            # onnx_dir: str,
-            # voice_style_path: str,
+            onnx_dir: str,
+            voice_style_path: str,
             **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -928,18 +925,14 @@ class Supertonic2Synthesizer(Synthesizer):
                 **kwargs,
         )
 
-        # TODO (Ted): Future remove below two lines.
-        import sys
-        sys.path.append("/home/pear/work/gitlab/")
-
         from supertonic.py.helper import load_text_to_speech, load_voice_style
 
         self._text_to_speech = load_text_to_speech(
-                self.ONNX_DIR,
+                onnx_dir,
                 self.USE_GPU,
         )
         self._style = load_voice_style(
-                self.VOICE_STYLE_PATHS,
+                voice_style_path,
                 verbose=True,
         )
 
@@ -972,7 +965,7 @@ class Supertonic2Synthesizer(Synthesizer):
         wav = np.squeeze(
             wav,
             axis=0,
-        ) 
+        )
 
         self._timer.maybe_log_time_first_audio()
 
