@@ -29,7 +29,7 @@ from pvorca import OrcaActivationLimitError
 from audio import AudioSink, AudioEncodings
 from ._timer import Timer
 
-
+INT16_SCALE = 32767
 
 class Synthesizers(Enum):
     AZURE_TTS = "azure_tts"
@@ -39,10 +39,10 @@ class Synthesizers(Enum):
     OPENAI_TTS = "openai_tts"
     PICOVOICE_ORCA = "picovoice_orca"
     KOKORO_TTS = "kokoro_tts"
-    CHATTERBOX_TTS_TURBO = "chatterbox_tts_turbo"  # TODO (Ted): There are actually two: Chatterbox-TTS or Chatterbox-TTS-Turbo.
+    CHATTERBOX_TTS_TURBO = "chatterbox_tts_turbo"
     KITTEN_TTS = "kitten_tts"
-    POCKET_TTS = "pocket_tts"  # TODO (Ted): There are actually two: Kyutai-TTS (1.6B) that is dual streaming, and Pocket-TTS (100M) that is output streaming but not input streaming.
-    NEU_TTS_NANO_Q4_GGUF = "neu_tts_nano_q4_gguf"  # TODO (Ted): There is actually another one "Neu-TTS-Air".
+    POCKET_TTS = "pocket_tts"
+    NEU_TTS_NANO_Q4_GGUF = "neu_tts_nano_q4_gguf"
     PIPER_TTS = "piper_tts"
     SOPRANO_TTS = "soprano_tts"
     SUPERTONIC_TTS_2 = "supertonic_tts_2"
@@ -491,10 +491,11 @@ class PicovoiceOrcaSynthesizer(Synthesizer):
 class KokoroSynthesizer(Synthesizer):
     NAME = "Kokoro TTS"
     SAMPLE_RATE = 24000
-    AUDIO_ENCODING = AudioEncodings.INT16  # TODO (Ted): Check this. It's likely wrong.
-    LANGUAGE_CODE = "a"  # Ted: For American English.
+    AUDIO_ENCODING = AudioEncodings.INT16
+    LANGUAGE_CODE = "a"
     VOICE_ID = "af_heart"
     SPEED = 1
+    DEVICE = "cpu"
 
     def __init__(
             self,
@@ -506,12 +507,12 @@ class KokoroSynthesizer(Synthesizer):
                 **kwargs,
         )
 
-        from kokoro import KPipeline  # TODO (Ted): To avoid different repos affecting each other. Currently using differen venv for each model due to incompatibility.
+        from kokoro import KPipeline
 
         self._pipeline = KPipeline(
                 lang_code=self.LANGUAGE_CODE,
-                device="cpu",
-        ) # <= make sure lang_code matches voice, reference above.
+                device=self.DEVICE,
+        )
 
     def synthesize(
             self,
@@ -527,27 +528,22 @@ class KokoroSynthesizer(Synthesizer):
 
         generator = self._pipeline(
             text,
-            voice=self.VOICE_ID, # <= change voice here
+            voice=self.VOICE_ID,
             speed=self.SPEED,
             split_pattern=r'\n+',
         )
-        # Alternatively, load voice tensor directly:
-        # voice_tensor = torch.load('path/to/voice.pt', weights_only=True)
-        # generator = pipeline(
-        #     text, voice=voice_tensor,
-        #     speed=1, split_pattern=r'\n+'
-        # )
 
-        for i, (gs, ps, audio) in enumerate(generator):
+        for gs, ps, chunk in generator:
             self._timer.maybe_log_time_first_audio()
 
-            # print(i)  # i => index
-            # print(gs) # gs => graphemes/text
-            # print(ps) # ps => phonemes
-            # display(Audio(data=audio, rate=24000, autoplay=i==0))
-            # sf.write(f'{i}.wav', audio, 24000) # save each audio file
+            chunk = torch.clamp(
+                    chunk,
+                    -1,
+                    1,
+            ) * INT16_SCALE
+            chunk = chunk.to(torch.int16).numpy()
 
-            self._audio_sink.add(data=audio)  # TODO (Ted): Check if data=audio is desired.
+            self._audio_sink.add(data=chunk)
 
         self._timer.log_time_last_audio()
 
@@ -558,7 +554,8 @@ class KokoroSynthesizer(Synthesizer):
 class ChatterboxTurboSynthesizer(Synthesizer):
     NAME = "Chatterbox TTS Turbo"
     SAMPLE_RATE = 24000
-    AUDIO_ENCODING = AudioEncodings.INT16  # TODO (Ted): Check this. It's likely wrong.
+    AUDIO_ENCODING = AudioEncodings.INT16
+    DEVICE = "cpu"
 
     def __init__(
             self,
@@ -572,7 +569,7 @@ class ChatterboxTurboSynthesizer(Synthesizer):
 
         from chatterbox.tts_turbo import ChatterboxTurboTTS
 
-        self._model = ChatterboxTurboTTS.from_pretrained(device="cpu")
+        self._model = ChatterboxTurboTTS.from_pretrained(device=self.DEVICE)
 
     def synthesize(
             self,
@@ -588,9 +585,16 @@ class ChatterboxTurboSynthesizer(Synthesizer):
 
         wav = self._model.generate(text).squeeze(0)
 
+        wav = torch.clamp(
+                wav,
+                -1,
+                1,
+        ) * INT16_SCALE
+        wav = wav.to(torch.int16).numpy()
+
         self._timer.maybe_log_time_first_audio()
 
-        self._audio_sink.add(data=wav)  # TODO (Ted): Check if data=audio is desired.
+        self._audio_sink.add(data=wav)
 
         self._timer.log_time_last_audio()
 
@@ -601,8 +605,10 @@ class ChatterboxTurboSynthesizer(Synthesizer):
 class KittenSynthesizer(Synthesizer):
     NAME = "Kitten TTS Nano 0.8 INT8"
     SAMPLE_RATE = 24000
-    AUDIO_ENCODING = AudioEncodings.INT16  # TODO (Ted): Check this. It's likely wrong.
-    VOICE_ID = "Bella"  # available_voices : ['Bella', 'Jasper', 'Luna', 'Bruno', 'Rosie', 'Hugo', 'Kiki', 'Leo']
+    AUDIO_ENCODING = AudioEncodings.INT16
+    VOICE_ID = "Bella"
+    MODEL_ID = "KittenML/kitten-tts-nano-0.8-int8"
+    MAX_SENTENCE_LENGTH = 400
 
     def __init__(
             self,
@@ -616,7 +622,7 @@ class KittenSynthesizer(Synthesizer):
 
         from kittentts import KittenTTS
 
-        self._model = KittenTTS("KittenML/kitten-tts-nano-0.8-int8")
+        self._model = KittenTTS(self.MODEL_ID)
 
     def synthesize(
             self,
@@ -628,9 +634,9 @@ class KittenSynthesizer(Synthesizer):
     ):
         text = self._read_text_stream(text_stream)
 
-        if len(text) >= 400:
+        if len(text) >= self.MAX_SENTENCE_LENGTH:
             self._timer.skip_this_result = True
-            print("Text input length reached or exceeded 400! Which is a limit for Kitten-TTS. Skipping this sentence.")
+            print("Text input length reached 400! Kitten-TTS has a limit on sentence length. Skipping this sentence.")
             return
 
         self._timer.maybe_log_time_first_synthesis_request()
@@ -640,9 +646,16 @@ class KittenSynthesizer(Synthesizer):
                 voice=self.VOICE_ID,
         )
 
+        audio = np.clip(
+                audio,
+                -1,
+                1,
+        ) * INT16_SCALE
+        audio = audio.astype(np.int16)
+
         self._timer.maybe_log_time_first_audio()
 
-        self._audio_sink.add(data=audio)  # TODO (Ted): Check if data=audio is desired.
+        self._audio_sink.add(data=audio)
 
         self._timer.log_time_last_audio()
 
@@ -653,7 +666,8 @@ class KittenSynthesizer(Synthesizer):
 class PocketSynthesizer(Synthesizer):
     NAME = "Pocket TTS"
     SAMPLE_RATE = 24000
-    AUDIO_ENCODING = AudioEncodings.INT16  # TODO (Ted): Check this. It's likely wrong.
+    AUDIO_ENCODING = AudioEncodings.INT16
+    SPEAKER_ID = "alba"
 
     def __init__(
             self,
@@ -665,10 +679,10 @@ class PocketSynthesizer(Synthesizer):
                 **kwargs,
         )
 
-        from pocket_tts import TTSModel  # TODO (Ted): To avoid different repos affecting each other. Currently using differen venv for each model due to incompatibility.
+        from pocket_tts import TTSModel
 
         self._model = TTSModel.load_model()
-        self._voice_state = self._model.get_state_for_audio_prompt("alba")
+        self._voice_state = self._model.get_state_for_audio_prompt(self.SPEAKER_ID)
 
     def synthesize(
             self,
@@ -682,15 +696,22 @@ class PocketSynthesizer(Synthesizer):
 
         self._timer.maybe_log_time_first_synthesis_request()
 
-        # Ted: Pocket-TTS is output streaming (but not input streaming!), so let's do that here! However, Kyutai-TTS (1.6B) is indeed dual streaming.
         audio_chunks = self._model.generate_audio_stream(
             model_state=self._voice_state,
             text_to_generate=text,
         )
 
-        for i, chunk in enumerate(audio_chunks):
+        for chunk in audio_chunks:
             self._timer.maybe_log_time_first_audio()
-            self._audio_sink.add(data=chunk)  # TODO (Ted): Check if data=audio is desired.
+
+            chunk = torch.clamp(
+                    chunk,
+                    -1,
+                    1,
+            ) * INT16_SCALE
+            chunk = chunk.to(torch.int16).numpy()
+
+            self._audio_sink.add(data=chunk)
 
         self._timer.log_time_last_audio()
 
@@ -701,7 +722,7 @@ class PocketSynthesizer(Synthesizer):
 class NeuTTSNanoSynthesizer(Synthesizer):
     NAME = "NeuTTS Nano"
     SAMPLE_RATE = 24000
-    AUDIO_ENCODING = AudioEncodings.INT16  # TODO (Ted): Check this. It's likely wrong.
+    AUDIO_ENCODING = AudioEncodings.INT16
     BACKBONE_REPO = "neuphonic/neutts-nano-q4-gguf"
     CODEC_REPO = "neuphonic/neucodec-onnx-decoder"
     REF_TEXT_PATH = "/home/pear/work/gitlab/neutts/samples/jo.txt"
@@ -726,7 +747,6 @@ class NeuTTSNanoSynthesizer(Synthesizer):
 
         self._ref_text = self._read_if_path(self.REF_TEXT_PATH)
 
-        assert os.path.exists(self.REF_CODES_PATH)
         self._ref_codes = torch.load(self.REF_CODES_PATH)
 
     @staticmethod
@@ -752,9 +772,14 @@ class NeuTTSNanoSynthesizer(Synthesizer):
         ):
             self._timer.maybe_log_time_first_audio()
 
-            audio = (chunk * 32767).astype(np.int16)
+            chunk = np.clip(
+                    chunk,
+                    -1,
+                    1,
+            ) * INT16_SCALE
+            chunk = chunk.astype(np.int16)
 
-            self._audio_sink.add(data=audio)  # TODO (Ted): Check if data=audio is desired.
+            self._audio_sink.add(data=chunk)
 
         self._timer.log_time_last_audio()
 
@@ -764,8 +789,8 @@ class NeuTTSNanoSynthesizer(Synthesizer):
 
 class PiperSynthesizer(Synthesizer):
     NAME = "Piper TTS"
-    SAMPLE_RATE = 16000  # TODO (Ted): Double check this because some models of Piper-TTS might also use 16000 or 22050.
-    AUDIO_ENCODING = AudioEncodings.INT16  # TODO (Ted): Check this. It's likely wrong.
+    SAMPLE_RATE = 16000
+    AUDIO_ENCODING = AudioEncodings.INT16
     MODEL_PATH = "/home/pear/work/github/tts-latency-benchmark/piper_tts_voices/en_US-lessac-low.onnx"
 
     def __init__(
@@ -799,7 +824,14 @@ class PiperSynthesizer(Synthesizer):
         for chunk in chunks:
             self._timer.maybe_log_time_first_audio()
 
-            self._audio_sink.add(data=chunk.audio_float_array)  # TODO (Ted): Check if data=audio is desired.
+            chunk_pcm = np.clip(
+                    chunk.audio_float_array,
+                    -1,
+                    1,
+            ) * INT16_SCALE
+            chunk_pcm = chunk_pcm.astype(np.int16)
+
+            self._audio_sink.add(data=chunk_pcm)
 
         self._timer.log_time_last_audio()
 
@@ -810,7 +842,9 @@ class PiperSynthesizer(Synthesizer):
 class SopranoSynthesizer(Synthesizer):
     NAME = "Soprano TTS"
     SAMPLE_RATE = 32000
-    AUDIO_ENCODING = AudioEncodings.INT16  # TODO (Ted): Check this. It's likely wrong.
+    AUDIO_ENCODING = AudioEncodings.INT16
+    DEVICE = "cpu"
+    BACKEND = "auto"
 
     def __init__(
             self,
@@ -825,8 +859,8 @@ class SopranoSynthesizer(Synthesizer):
         from soprano import SopranoTTS
 
         self._model = SopranoTTS(
-                backend='auto',  # Ted: According to Soprano-TTS codebase, it will use "transformers" backend if device is "CPU".
-                device="cpu",  # Ted: Because Ali want all tts-latency-benchmark to be running on CPU, doesn't matter their core usage.
+                backend=self.BACKEND,
+                device=self.DEVICE,
         )
 
     def synthesize(
@@ -851,11 +885,18 @@ class SopranoSynthesizer(Synthesizer):
             if isinstance(chunk, torch.Tensor):
                 chunk = chunk.detach().cpu()
 
-            # Ensure shape (N)
             if chunk.dim() == 2 and chunk.shape[0] == 1:
                 chunk = chunk[0]
 
-            self._audio_sink.add(data=chunk)  # TODO (Ted): Check if data=audio is desired.
+            chunk = torch.clamp(
+                    chunk,
+                    -1,
+                    1,
+            ) * INT16_SCALE
+
+            chunk = chunk.to(torch.int16).numpy()
+
+            self._audio_sink.add(data=chunk)
 
         self._timer.log_time_last_audio()
 
@@ -866,9 +907,10 @@ class SopranoSynthesizer(Synthesizer):
 class Supertonic2Synthesizer(Synthesizer):
     NAME = "Supertonic TTS 2"
     SAMPLE_RATE = 44100
-    AUDIO_ENCODING = AudioEncodings.INT16  # TODO (Ted): Check this. It's likely wrong.
-    ONNX_DIR = "/home/pear/work/gitlab/supertonic/assets/onnx"
+    AUDIO_ENCODING = AudioEncodings.INT16
     USE_GPU = False
+    # TODO (Ted): Future below below 2 lines.
+    ONNX_DIR = "/home/pear/work/gitlab/supertonic/assets/onnx"
     VOICE_STYLE_PATHS = ["/home/pear/work/gitlab/supertonic/py/assets/voice_styles/M1.json"]
     LANGUAGE_CODE = "en"
     TOTAL_STEP = 5
@@ -876,6 +918,8 @@ class Supertonic2Synthesizer(Synthesizer):
 
     def __init__(
             self,
+            # onnx_dir: str,
+            # voice_style_path: str,
             **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -884,6 +928,7 @@ class Supertonic2Synthesizer(Synthesizer):
                 **kwargs,
         )
 
+        # TODO (Ted): Future remove below two lines.
         import sys
         sys.path.append("/home/pear/work/gitlab/")
 
@@ -910,7 +955,7 @@ class Supertonic2Synthesizer(Synthesizer):
 
         self._timer.maybe_log_time_first_synthesis_request()
 
-        wav, duration = self._text_to_speech(
+        wav, _ = self._text_to_speech(
             text,
             self.LANGUAGE_CODE,
             self._style,
@@ -918,9 +963,20 @@ class Supertonic2Synthesizer(Synthesizer):
             self.SPEED,
         )
 
+        wav = np.clip(
+                wav,
+                -1,
+                1,
+        ) * INT16_SCALE
+        wav = wav.astype(np.int16)
+        wav = np.squeeze(
+            wav,
+            axis=0,
+        ) 
+
         self._timer.maybe_log_time_first_audio()
 
-        self._audio_sink.add(data=np.squeeze(wav, axis=0))  # TODO (Ted): Check if data=audio is desired.
+        self._audio_sink.add(data=wav)
 
         self._timer.log_time_last_audio()
 
@@ -931,7 +987,7 @@ class Supertonic2Synthesizer(Synthesizer):
 class EspeakNGSynthesizer(Synthesizer):
     NAME = "Espeak NG"
     SAMPLE_RATE = 22050
-    AUDIO_ENCODING = AudioEncodings.BYTES  # TODO (Ted): Check this. It's likely wrong.
+    AUDIO_ENCODING = AudioEncodings.BYTES
     CHUNK_SIZE_MAX_BYTES = 4096
 
     def __init__(
@@ -951,7 +1007,7 @@ class EspeakNGSynthesizer(Synthesizer):
                 None,
                 None,
             ],
-    ):
+    ) -> None:
         text = self._read_text_stream(text_stream)
 
         self._timer.maybe_log_time_first_synthesis_request()
@@ -977,7 +1033,7 @@ class EspeakNGSynthesizer(Synthesizer):
             if not chunk:
                 break
 
-            self._audio_sink.add(data=chunk)  # TODO (Ted): Check if data=audio is desired.
+            self._audio_sink.add(data=chunk)
 
         self._timer.log_time_last_audio()
 
