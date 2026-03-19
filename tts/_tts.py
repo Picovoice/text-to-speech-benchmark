@@ -1,3 +1,5 @@
+import time
+import threading
 import numpy as np
 import torch
 import os
@@ -27,9 +29,14 @@ from openai import OpenAI
 from pvorca import OrcaActivationLimitError
 
 from audio import AudioSink, AudioEncodings
-from ._timer import Timer
+from ._measurement import (
+        Timer,
+        CoreTimeMeasure,
+        include_measurement,
+)
 
 INT16_SCALE = 32767
+
 
 class Synthesizers(Enum):
     AZURE_TTS = "azure_tts"
@@ -411,6 +418,7 @@ class PicovoiceOrcaSynthesizer(Synthesizer):
             model_path: Optional[str] = None,
             device: Optional[str] = None,
             library_path: Optional[str] = None,
+            save_audio: bool = True,
     ) -> None:
         self._orca = pvorca.create(
             access_key=access_key,
@@ -428,6 +436,8 @@ class PicovoiceOrcaSynthesizer(Synthesizer):
         self._queue: Queue[Optional[PicovoiceOrcaSynthesizer.OrcaTextInput]] = Queue()
 
         self._num_tokens = 0
+
+        self._save_audio = save_audio
 
         self._thread = None
         self._start_thread()
@@ -456,20 +466,32 @@ class PicovoiceOrcaSynthesizer(Synthesizer):
             except OrcaActivationLimitError:
                 raise ValueError("Orca activation limit reached.")
 
+
             if pcm is not None:
                 self._timer.maybe_set_time_first_synthesis_request(seconds=time_before_proc)
                 self._timer.maybe_log_time_first_audio()
-                self._audio_sink.add(data=pcm)
+                pcm_seconds = len(pcm) / self._orca.sample_rate
+                self._timer.accumulate_audio_seconds(pcm_seconds)
+                if self._save_audio:
+                    self._audio_sink.add(data=pcm)
 
-    def synthesize(self, text_stream: Generator[str, None, None]) -> None:
-        for token in text_stream:
-            self._timer.maybe_log_time_first_llm_token()
-            self._synthesize(token)
-            self._timer.increment_num_tokens()
+    def synthesize(
+            self,
+            text_stream: Generator[str, None, None],
+    ) -> None:
+        with CoreTimeMeasure() as core_time_measure:
+            for token in text_stream:
+                self._timer.maybe_log_time_first_llm_token()
+                with include_measurement(core_time_measure):
+                    self._synthesize(token)
+                self._timer.increment_num_tokens()
 
-        self._timer.log_time_last_llm_token()
+            self._timer.log_time_last_llm_token()
 
-        self._flush()
+            with include_measurement(core_time_measure):
+                self._flush()
+
+            self._timer.core_time = core_time_measure.accum_time
 
     def _synthesize(self, text: str) -> None:
         self._queue.put_nowait(self.OrcaTextInput(text=text, flush=False))
@@ -499,6 +521,7 @@ class KokoroSynthesizer(Synthesizer):
 
     def __init__(
             self,
+            save_audio: bool = True,
             **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -506,6 +529,8 @@ class KokoroSynthesizer(Synthesizer):
                 audio_encoding=self.AUDIO_ENCODING,
                 **kwargs,
         )
+
+        self._save_audio = save_audio
 
         from kokoro import KPipeline
 
@@ -524,28 +549,35 @@ class KokoroSynthesizer(Synthesizer):
     ):
         text = self._read_text_stream(text_stream)
 
-        self._timer.maybe_log_time_first_synthesis_request()
+        with CoreTimeMeasure() as core_time_measure:
+            with include_measurement(core_time_measure):
+                self._timer.maybe_log_time_first_synthesis_request()
 
-        generator = self._pipeline(
-            text,
-            voice=self.VOICE_ID,
-            speed=self.SPEED,
-            split_pattern=r'\n+',
-        )
+                generator = self._pipeline(
+                    text,
+                    voice=self.VOICE_ID,
+                    speed=self.SPEED,
+                    split_pattern=r'\n+',
+                )
 
-        for gs, ps, chunk in generator:
-            self._timer.maybe_log_time_first_audio()
+                for gs, ps, chunk in generator:
+                    self._timer.maybe_log_time_first_audio()
 
-            chunk = torch.clamp(
-                    chunk,
-                    -1,
-                    1,
-            ) * INT16_SCALE
-            chunk = chunk.to(torch.int16).numpy()
+                    chunk = torch.clamp(
+                            chunk,
+                            -1,
+                            1,
+                    ) * INT16_SCALE
+                    chunk = chunk.to(torch.int16).numpy()
 
-            self._audio_sink.add(data=chunk)
+                    chunk_seconds = len(chunk) / self.SAMPLE_RATE
+                    self._timer.accumulate_audio_seconds(chunk_seconds)
+                    if self._save_audio:
+                        self._audio_sink.add(data=chunk)
 
-        self._timer.log_time_last_audio()
+                self._timer.log_time_last_audio()
+
+            self._timer.core_time = core_time_measure.accum_time
 
     def __str__(self) -> str:
         return f"{self.NAME}"
@@ -915,8 +947,10 @@ class Supertonic2Synthesizer(Synthesizer):
 
     def __init__(
             self,
+            repo_dir: str,
             onnx_dir: str,
             voice_style_path: str,
+            save_audio: bool = True,
             **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -925,14 +959,18 @@ class Supertonic2Synthesizer(Synthesizer):
                 **kwargs,
         )
 
-        from supertonic.py.helper import load_text_to_speech, load_voice_style
+        self._save_audio = save_audio
+
+        import sys
+        sys.path.append(repo_dir)
+        from py.helper import load_text_to_speech, load_voice_style
 
         self._text_to_speech = load_text_to_speech(
                 onnx_dir,
                 self.USE_GPU,
         )
         self._style = load_voice_style(
-                voice_style_path,
+                [voice_style_path],
                 verbose=True,
         )
 
@@ -946,32 +984,39 @@ class Supertonic2Synthesizer(Synthesizer):
     ):
         text = self._read_text_stream(text_stream)
 
-        self._timer.maybe_log_time_first_synthesis_request()
+        with CoreTimeMeasure() as core_time_measure:
+            with include_measurement(core_time_measure):
+                self._timer.maybe_log_time_first_synthesis_request()
 
-        wav, _ = self._text_to_speech(
-            text,
-            self.LANGUAGE_CODE,
-            self._style,
-            self.TOTAL_STEP,
-            self.SPEED,
-        )
+                wav, _ = self._text_to_speech(
+                    text,
+                    self.LANGUAGE_CODE,
+                    self._style,
+                    self.TOTAL_STEP,
+                    self.SPEED,
+                )
 
-        wav = np.clip(
-                wav,
-                -1,
-                1,
-        ) * INT16_SCALE
-        wav = wav.astype(np.int16)
-        wav = np.squeeze(
-            wav,
-            axis=0,
-        )
+                wav = np.clip(
+                        wav,
+                        -1,
+                        1,
+                ) * INT16_SCALE
+                wav = wav.astype(np.int16)
+                wav = np.squeeze(
+                    wav,
+                    axis=0,
+                )
 
-        self._timer.maybe_log_time_first_audio()
+                self._timer.maybe_log_time_first_audio()
 
-        self._audio_sink.add(data=wav)
+                wav_seconds = len(wav) / self.SAMPLE_RATE
+                self._timer.accumulate_audio_seconds(wav_seconds)
+                if self._save_audio:
+                    self._audio_sink.add(data=wav)
 
-        self._timer.log_time_last_audio()
+                self._timer.log_time_last_audio()
+
+            self._timer.core_time = core_time_measure.accum_time
 
     def __str__(self) -> str:
         return f"{self.NAME}"
@@ -985,6 +1030,7 @@ class EspeakNGSynthesizer(Synthesizer):
 
     def __init__(
             self,
+            save_audio: bool = True,
             **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -992,6 +1038,8 @@ class EspeakNGSynthesizer(Synthesizer):
                 audio_encoding=self.AUDIO_ENCODING,
                 **kwargs,
         )
+
+        self._save_audio = save_audio
 
     def synthesize(
             self,
@@ -1003,32 +1051,39 @@ class EspeakNGSynthesizer(Synthesizer):
     ) -> None:
         text = self._read_text_stream(text_stream)
 
-        self._timer.maybe_log_time_first_synthesis_request()
+        with CoreTimeMeasure() as core_time_measure:
+            with include_measurement(core_time_measure):
+                self._timer.maybe_log_time_first_synthesis_request()
 
-        cmd = [
-            "espeak-ng",
-            "--stdout",
-            text,
-        ]
+                cmd = [
+                    "espeak-ng",
+                    "--stdout",
+                    text,
+                ]
 
-        process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            bufsize=0
-        )
+                process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    bufsize=0
+                )
 
-        while True:
-            chunk = process.stdout.read(self.CHUNK_SIZE_MAX_BYTES)
+                while True:
+                    chunk = process.stdout.read(self.CHUNK_SIZE_MAX_BYTES)
 
-            self._timer.maybe_log_time_first_audio()
+                    self._timer.maybe_log_time_first_audio()
 
-            if not chunk:
-                break
+                    if not chunk:
+                        break
 
-            self._audio_sink.add(data=chunk)
+                    chunk_seconds = len(chunk) / self.SAMPLE_RATE
+                    self._timer.accumulate_audio_seconds(chunk_seconds)
+                    if self._save_audio:
+                        self._audio_sink.add(data=chunk)
 
-        self._timer.log_time_last_audio()
+                self._timer.log_time_last_audio()
+
+            self._timer.core_time = core_time_measure.accum_time
 
     def __str__(self) -> str:
         return f"{self.NAME}"

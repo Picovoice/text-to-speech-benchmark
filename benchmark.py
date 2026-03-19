@@ -21,10 +21,21 @@ from tts import (
     Synthesizers,
     Synthesizer,
     Timer,
+    measure_peak_memory,
 )
 
 DEFAULT_RESULTS_FOLDER = os.path.join(os.path.dirname(__file__), "results", "data")
 DEFAULT_DATASET = TextDatasets.TASKMASTER2
+
+TEST_MEMORY_SENTENCE = (
+    "The sun dipped below the horizon, casting a warm amber glow over the quiet streets. "
+    "In the distance, the faint hum of a bicycle bell mingled with the rustling leaves, creating a "
+    "rhythm only the evening could compose. Cats slinked along fences, their eyes gleaming like tiny "
+    "lanterns, while the smell of freshly baked bread drifted from a corner bakery. Somewhere, a piano "
+    "played a lonely tune, echoing through narrow alleys and inviting passersby to pause and listen, "
+    "even for just a moment. The world felt suspended between the hum of everyday life and the whisper "
+    "of something magical waiting to unfold."
+)
 
 
 @dataclass
@@ -36,6 +47,10 @@ class TimingResult:
     num_words: int
     num_tokens_per_second: float
 
+    core_time: float
+    accumulated_audio_seconds: float
+    core_hour_ratio: float
+
     @staticmethod
     def _compute_statistics(results: Sequence['TimingResult'], fn: Callable) -> 'TimingResult':
         return TimingResult(
@@ -45,6 +60,9 @@ class TimingResult:
             tts_process_seconds=fn([r.tts_process_seconds for r in results]),
             num_words=int(fn([r.num_words for r in results])),
             num_tokens_per_second=fn([r.num_tokens_per_second for r in results]),
+            core_time=fn([r.core_time for r in results]),
+            accumulated_audio_seconds=fn([r.accumulated_audio_seconds for r in results]),
+            core_hour_ratio=fn([r.core_hour_ratio for r in results]),
         )
 
     @classmethod
@@ -113,6 +131,10 @@ class Stats:
         print(f"TTS processing time: {mean.tts_process_seconds:.2f} +- {std.tts_process_seconds:.2f} s")
         print(f"Mean number of words per sentence: {mean.num_words:.1f} +- {std.num_words:.1f}")
         print(f"Mean tokens per second: {mean.num_tokens_per_second:.2f} +- {std.num_tokens_per_second:.2f}")
+        
+        print(f"Core time: {mean.core_time:.2f} +- {std.core_time:.2f}")
+        print(f"Accumulated audio seconds: {mean.accumulated_audio_seconds:.2f} +- {std.accumulated_audio_seconds:.2f}")
+        print(f"Core hour ratio: {mean.core_hour_ratio:.2f} +- {std.core_hour_ratio:.2f}")
 
         fig, axs = plt.subplots(3, 2, figsize=(14, 8))
         axs[0, 0].hist([r.voice_assistant_response_time for r in self._results], bins=10)
@@ -129,6 +151,14 @@ class Stats:
         axs[2, 1].hist([r.tts_process_seconds for r in self._results], bins=10)
         axs[2, 1].set_title('tts_process_seconds')
 
+        axs[2, 1].hist([r.core_time for r in self._results], bins=10)
+        axs[2, 1].set_title('core_time')
+        axs[2, 1].hist([r.accumulated_audio_seconds for r in self._results], bins=10)
+        axs[2, 1].set_title('accumulated_audio_seconds')
+        axs[2, 1].hist([r.core_hour_ratio for r in self._results], bins=10)
+        axs[2, 1].set_title('core_hour_ratio')
+
+
         output_path = os.path.join(self._output_folder, f"hists_tts_{self._tts_type_string}.png")
         plt.savefig(output_path)
         plt.close()
@@ -142,12 +172,18 @@ class Stats:
             "mean_tts_process_seconds": mean.tts_process_seconds,
             "mean_num_words": mean.num_words,
             "mean_num_tokens_per_second": mean.num_tokens_per_second,
+            "mean_core_time": mean.core_time,
+            "mean_accumulated_audio_seconds": mean.accumulated_audio_seconds,
+            "mean_core_hour_ratio": mean.core_hour_ratio,
             "std_voice_assistant_response_time": std.voice_assistant_response_time,
             "std_time_to_first_token": std.time_to_first_token,
             "std_first_token_to_speech": std.first_token_to_speech,
             "std_tts_process_seconds": std.tts_process_seconds,
             "std_num_words": std.num_words,
             "std_num_tokens_per_second": std.num_tokens_per_second,
+            "std_core_time": std.core_time,
+            "std_accumulated_audio_seconds": std.accumulated_audio_seconds,
+            "std_core_hour_ratio": std.core_hour_ratio,
         }
         with open(results_json_path, "w") as f:
             json.dump(results_dict, f, indent=4)
@@ -167,19 +203,27 @@ class Stats:
             results_dict = json.load(f)
 
         mean = TimingResult(
-            voice_assistant_response_time=results_dict["mean_voice_assistant_response_time"] * scale,
-            time_to_first_token=results_dict["mean_time_to_first_token"] * scale,
-            first_token_to_speech=results_dict["mean_first_token_to_speech"] * scale,
-            tts_process_seconds=results_dict["mean_tts_process_seconds"] * scale,
-            num_words=results_dict["mean_num_words"] * scale,
-            num_tokens_per_second=results_dict["mean_num_tokens_per_second"] * scale)
+                voice_assistant_response_time=results_dict["mean_voice_assistant_response_time"] * scale,
+                time_to_first_token=results_dict["mean_time_to_first_token"] * scale,
+                first_token_to_speech=results_dict["mean_first_token_to_speech"] * scale,
+                tts_process_seconds=results_dict["mean_tts_process_seconds"] * scale,
+                num_words=results_dict["mean_num_words"] * scale,
+                num_tokens_per_second=results_dict["mean_num_tokens_per_second"] * scale,
+                core_time=results_dict["mean_core_time"],
+                accumulated_audio_seconds=results_dict["mean_accumulated_audio_seconds"],
+                core_hour_ratio=results_dict["mean_core_hour_ratio"],
+        )
         std = TimingResult(
-            voice_assistant_response_time=results_dict["std_voice_assistant_response_time"] * scale,
-            time_to_first_token=results_dict["std_time_to_first_token"] * scale,
-            first_token_to_speech=results_dict["std_first_token_to_speech"] * scale,
-            tts_process_seconds=results_dict["std_tts_process_seconds"] * scale,
-            num_words=results_dict["std_num_words"] * scale,
-            num_tokens_per_second=results_dict["std_num_tokens_per_second"] * scale)
+                voice_assistant_response_time=results_dict["std_voice_assistant_response_time"] * scale,
+                time_to_first_token=results_dict["std_time_to_first_token"] * scale,
+                first_token_to_speech=results_dict["std_first_token_to_speech"] * scale,
+                tts_process_seconds=results_dict["std_tts_process_seconds"] * scale,
+                num_words=results_dict["std_num_words"] * scale,
+                num_tokens_per_second=results_dict["std_num_tokens_per_second"] * scale,
+                core_time=results_dict["std_core_time"],
+                accumulated_audio_seconds=results_dict["std_accumulated_audio_seconds"],
+                core_hour_ratio=results_dict["std_core_hour_ratio"],
+        )
 
         return Synthesizers(tts_type_string), mean, std
 
@@ -254,6 +298,10 @@ def get_synthesizer_init_kwargs(args: argparse.Namespace) -> Dict[str, str]:
                     f"Piper-TTS requires the model path. Specify with `--pipertts-model-path`.")
         kwargs["model_path"] = args.pipertts_model_path
     elif synthesizer_type is Synthesizers.SUPERTONIC_TTS_2:
+        if args.supertonictts_repo_dir is None:
+            raise ValueError(
+                    f"Supertonic-TTS-2 requires the path to repo directory. Specify with `--supertonictts-repo-dir`.")
+        kwargs["repo_dir"] = args.supertonictts_repo_dir
         if args.supertonictts_onnx_dir is None:
             raise ValueError(
                     f"Supertonic-TTS-2 requires the path to onnx directory. Specify with `--supertonictts-onnx-dir`.")
@@ -266,7 +314,7 @@ def get_synthesizer_init_kwargs(args: argparse.Namespace) -> Dict[str, str]:
     return kwargs
 
 
-async def _run_benchmark_iteration(
+async def _run_benchmark_iteration_for_time_measurement(
         llm: LLM,
         synthesizer: Synthesizer,
         sentence: str,
@@ -282,19 +330,30 @@ async def _run_benchmark_iteration(
     if synthesizer.is_async:
         await synthesizer.synthesize_async(text_stream=llm.query_async(sentence))
     else:
-        synthesizer.synthesize(text_stream=llm.query(sentence))
+        text_stream = llm.query(sentence)
+        synthesizer.synthesize(text_stream=text_stream)
 
     timer.wait_for_first_audio()
 
     if not timer.skip_this_result:
+        core_hour_ratio = timer.core_time / timer.accumulated_audio_seconds
         timing_result = TimingResult(
-            voice_assistant_response_time=timer.voice_assistant_response_time(),
-            time_to_first_token=timer.time_to_first_token(),
-            first_token_to_speech=timer.first_token_to_speech(),
-            tts_process_seconds=timer.tts_process_seconds(),
-            num_words=len(llm.last_response.split()),
-            num_tokens_per_second=timer.num_tokens_per_second())
+                voice_assistant_response_time=timer.voice_assistant_response_time(),
+                time_to_first_token=timer.time_to_first_token(),
+                first_token_to_speech=timer.first_token_to_speech(),
+                tts_process_seconds=timer.tts_process_seconds(),
+                num_words=len(llm.last_response.split()),
+                num_tokens_per_second=timer.num_tokens_per_second(),
+                core_time=timer.core_time,
+                accumulated_audio_seconds=timer.accumulated_audio_seconds,
+                core_hour_ratio=core_hour_ratio,
+        )
         stats.accumulate(timing_result=timing_result)
+
+        # print(f"timer.core_time: {timer.core_time}")
+        # print(f"timer.accumulated_audio_seconds: {timer.accumulated_audio_seconds}")
+        # print(f"Core time ratio: {(timer.core_time / timer.accumulated_audio_seconds):.4f}")  # TODO (Ted): Temporary print. Future remove.  # TODO (Ted): Need to plot this instead of printing.
+        # print(f"Core time inverse ratio: {(timer.accumulated_audio_seconds / max(0.01, timer.core_time)):.4f}")  # TODO (Ted): Temporary print. Future remove.  # TODO (Ted): Need to plot this instead of printing.
 
         if verbose:
             print(f"Question: {sentence}")
@@ -312,48 +371,84 @@ async def _run_benchmark_iteration(
             print("Error occurred for this sentence. Skip the result.")
 
 
-
-async def main(args: argparse.Namespace) -> None:
-    num_interactions = args.num_interactions
-    results_folder = args.results_folder
-    verbose = args.verbose
-    tts_type = Synthesizers(args.synthesizer)
-    llm_type = get_default_llm_type(tts_type)
-
-    dataset = TextDataset.create(DEFAULT_DATASET)
-
+async def _run_benchmark_iteration_for_memory_measurement(
+        sentence: str,
+        args: argparse.Namespace,
+) -> None:
     timer = Timer()
 
-    synthesizer_init_kwargs = get_synthesizer_init_kwargs(args)
-    synthesizer = Synthesizer.create(
-        Synthesizers(args.synthesizer),
-        timer=timer,
-        **synthesizer_init_kwargs)
+    with measure_peak_memory():
+        synthesizer_init_kwargs = get_synthesizer_init_kwargs(args)
+        synthesizer = Synthesizer.create(
+                Synthesizers(args.synthesizer),
+                timer=timer,
+                save_audio=False,
+                **synthesizer_init_kwargs,
+        )
 
-    llm_init_kwargs = get_llm_init_kwargs(args)
-    llm = LLM.create(llm_type, **llm_init_kwargs)
+        def trivial_generator():
+            for c in sentence:
+                yield c
 
-    benchmark_sentences = dataset.get_random_sentences(num=num_interactions)
+        if synthesizer.is_async:
+            await synthesizer.synthesize_async(text_stream=trivial_generator())
+        else:
+            synthesizer.synthesize(text_stream=trivial_generator())
 
-    stats = Stats(tts=tts_type, results_folder=results_folder)
+        synthesizer.terminate()
 
-    counter = 0
-    print("Running benchmark ...")
-    for sentence in tqdm(benchmark_sentences):
-        await _run_benchmark_iteration(
-            llm=llm,
-            synthesizer=synthesizer,
-            sentence=sentence,
+
+async def main(args: argparse.Namespace) -> None:
+    test_memory_size_multiple = args.test_memory_size_multiple
+    if test_memory_size_multiple >= 1:
+        await _run_benchmark_iteration_for_memory_measurement(
+                sentence=TEST_MEMORY_SENTENCE * test_memory_size_multiple,
+                args=args,
+        )
+
+        # TODO (Ted): Save result.
+    else:
+        num_interactions = args.num_interactions
+        results_folder = args.results_folder
+        verbose = args.verbose
+        tts_type = Synthesizers(args.synthesizer)
+        llm_type = get_default_llm_type(tts_type)
+
+        dataset = TextDataset.create(DEFAULT_DATASET)
+
+        timer = Timer()
+
+        synthesizer_init_kwargs = get_synthesizer_init_kwargs(args)
+        synthesizer = Synthesizer.create(
+            Synthesizers(args.synthesizer),
             timer=timer,
-            stats=stats,
-            results_folder=results_folder,
-            verbose=verbose,
-            counter=counter)
-        counter += 1
+            save_audio=verbose,
+            **synthesizer_init_kwargs)
 
-    stats.save_results()
+        llm_init_kwargs = get_llm_init_kwargs(args)
+        llm = LLM.create(llm_type, **llm_init_kwargs)
 
-    synthesizer.terminate()
+        benchmark_sentences = dataset.get_random_sentences(num=num_interactions)
+
+        stats = Stats(tts=tts_type, results_folder=results_folder)
+
+        counter = 0
+        print("Running benchmark for time measurement...")
+        for sentence in tqdm(benchmark_sentences):
+            await _run_benchmark_iteration_for_time_measurement(
+                llm=llm,
+                synthesizer=synthesizer,
+                sentence=sentence,
+                timer=timer,
+                stats=stats,
+                results_folder=results_folder,
+                verbose=verbose,
+                counter=counter)
+            counter += 1
+
+        stats.save_results()
+
+        synthesizer.terminate()
 
 
 if __name__ == "__main__":
@@ -433,6 +528,12 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+            "--supertonictts-repo-dir",
+            default=None,
+            help="Supertonic-TTS-2 path to repo directory.",
+    )
+
+    parser.add_argument(
             "--supertonictts-onnx-dir",
             default=None,
             help="Supertonic-TTS-2 path to ONNX directory.",
@@ -457,6 +558,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--verbose",
         action="store_true",
-        help="Print verbose output")
+        help="Print verbose output",
+    )
+
+    parser.add_argument(
+        "--test-memory-size-multiple",
+        type=int,
+        default=0,
+        help="Print verbose output",
+    )
 
     asyncio.run(main(parser.parse_args()))
