@@ -1,6 +1,7 @@
 import argparse
 import os
 from typing import Tuple
+import matplotlib.ticker as ticker
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -47,13 +48,13 @@ ENGINE_PRINT_NAMES = {
         # Synthesizers.OPENAI_TTS: 'OpenAI\nTTS',
         Synthesizers.PICOVOICE_ORCA: 'Picovoice\nOrca',
         Synthesizers.KOKORO_TTS: "Kokoro\nTTS",
-        # Synthesizers.CHATTERBOX_TTS_TURBO: "Chatterbox\nTTS\nTurbo",
-        # Synthesizers.KITTEN_TTS: "Kitten\nTTS Nano\n0.8 INT8",
-        # Synthesizers.POCKET_TTS: "Pocket\nTTS",
-        # Synthesizers.NEU_TTS_NANO_Q4_GGUF: "Neu TTS\nNano\nQ4 GGUF",
-        # Synthesizers.PIPER_TTS: "Piper\nTTS",
-        # Synthesizers.SOPRANO_TTS: "Soprano\nTTS",
-        # Synthesizers.SUPERTONIC_TTS_2: "Supertonic\nTTS 2",
+        Synthesizers.CHATTERBOX_TTS_TURBO: "Chatterbox\nTTS\nTurbo",
+        Synthesizers.KITTEN_TTS: "Kitten\nTTS Nano\n0.8 INT8",
+        Synthesizers.POCKET_TTS: "Pocket\nTTS",
+        Synthesizers.NEU_TTS_NANO_Q4_GGUF: "Neu TTS\nNano\nQ4 GGUF",
+        Synthesizers.PIPER_TTS: "Piper\nTTS",
+        Synthesizers.SOPRANO_TTS: "Soprano\nTTS",
+        Synthesizers.SUPERTONIC_TTS_2: "Supertonic\nTTS 2",
         Synthesizers.ESPEAK_NG: "ESPEAK\nNG",
 }
 
@@ -65,13 +66,13 @@ ENGINE_COLORS = {
         # Synthesizers.OPENAI_TTS: GREY4,
         Synthesizers.PICOVOICE_ORCA: BLUE,
         Synthesizers.KOKORO_TTS: COLOR_KOKORO_TTS,
-        # Synthesizers.CHATTERBOX_TTS_TURBO: COLOR_CHATTERBOX_TTS_TURBO,
-        # Synthesizers.KITTEN_TTS: COLOR_KITTEN_TTS,
-        # Synthesizers.POCKET_TTS: COLOR_POCKET_TTS,
-        # Synthesizers.NEU_TTS_NANO_Q4_GGUF: COLOR_NEU_TTS_NANO_Q4_GGUF,
-        # Synthesizers.PIPER_TTS: COLOR_PIPER_TTS,
-        # Synthesizers.SOPRANO_TTS: COLOR_SOPRANO_TTS,
-        # Synthesizers.SUPERTONIC_TTS_2: COLOR_SUPERTONIC_TTS_2,
+        Synthesizers.CHATTERBOX_TTS_TURBO: COLOR_CHATTERBOX_TTS_TURBO,
+        Synthesizers.KITTEN_TTS: COLOR_KITTEN_TTS,
+        Synthesizers.POCKET_TTS: COLOR_POCKET_TTS,
+        Synthesizers.NEU_TTS_NANO_Q4_GGUF: COLOR_NEU_TTS_NANO_Q4_GGUF,
+        Synthesizers.PIPER_TTS: COLOR_PIPER_TTS,
+        Synthesizers.SOPRANO_TTS: COLOR_SOPRANO_TTS,
+        Synthesizers.SUPERTONIC_TTS_2: COLOR_SUPERTONIC_TTS_2,
         Synthesizers.ESPEAK_NG: COLOR_ESPEAK_NG,
 }
 
@@ -87,7 +88,7 @@ def _plot(
     raw_results = []
     for file in os.listdir(results_folder):
         # if file.endswith(".json"):
-        if file.endswith("results_tts_picovoice_orca.json") or file.endswith("results_tts_kokoro_tts.json") or file.endswith("results_tts_espeak_ng.json"):  # TODO (Ted): Temporary hack for debugging!
+        if file.endswith("results_tts_picovoice_orca.json") or file.endswith("results_tts_kokoro_tts.json") or file.endswith("results_tts_espeak_ng.json") or file.endswith("results_tts_pocket_tts.json") or file.endswith("results_tts_chatterbox_tts_turbo.json") or file.endswith("results_tts_soprano_tts.json") or file.endswith("results_tts_kitten_tts.json") or file.endswith("results_tts_supertonic_tts_2.json") or file.endswith("results_tts_neu_tts_nano_q4_gguf.json") or file.endswith("results_tts_piper_tts.json"):  # TODO (Ted): Temporary hack for debugging!
             json_path = os.path.join(results_folder, file)
             synthesizer, mean, std = Stats.load_results(json_path, scale=1000)
             raw_results.append((synthesizer, mean, std))
@@ -110,6 +111,7 @@ def _plot(
         max_delay = max(max_delay, mean.core_hour_ratio)
 
     fig, ax = plt.subplots(figsize=(12, 6))
+    ax.set_yscale("log", base=10)
 
     # def round_result(value: float) -> float:
     #     return round(value, -1)
@@ -148,7 +150,8 @@ def _plot(
         ax.text(
             i,
             # rounded_result + 80,
-            rounded_result + 0.01,
+            # rounded_result + 0.3,
+            rounded_result * 1.1,
             f'{rounded_result:.6f}×' if not show_error_bars else f'{rounded_result:.0f}±{rounded_std:.0f} ms',
             ha="center",
             color=BLACK,
@@ -174,9 +177,14 @@ def _plot(
     y_max = max_delay + (max_delay / 3) if show_error_bars else max_delay + (max_delay / 6)
     plt.ylim(0, y_max)
     plt.xticks(np.arange(0, len(rounded_results)), [ENGINE_PRINT_NAMES[x[0]] for x in results], fontsize=8)
-    y_arange = np.arange(0, y_max, 0.05)
-    print(y_arange)
-    plt.yticks(y_arange, [f"{x:.2f}" for x in y_arange])
+    # y_arange = np.arange(0, y_max, 1)
+    # print(y_arange)
+    # plt.yticks(y_arange, [f"{x:.2f}" for x in y_arange])
+    ax.yaxis.set_major_locator(ticker.LogLocator(
+        base=10,
+    ))
+    ax.yaxis.set_major_formatter(ticker.LogFormatterSciNotation(base=10))
+
     metric = "Core Hour Ratio"
     plt.ylabel(f"{metric}", fontsize=14)
 
