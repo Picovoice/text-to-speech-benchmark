@@ -13,7 +13,6 @@ class Timer:
     _time_first_synthesis_request: float = -1.0
     _time_first_audio: float = -1.0
     _time_last_audio: float = -1.0
-
     _core_time: float = 0.0
     _accumulated_audio_seconds: float = 0.0
 
@@ -54,6 +53,10 @@ class Timer:
 
     def increment_num_tokens(self) -> None:
         self._num_tokens += 1
+
+    @property
+    def num_tokens(self) -> int:
+        return self._num_tokens
 
     def first_token_to_speech(self) -> float:
         return self._time_first_audio - self._time_first_llm_token
@@ -197,6 +200,9 @@ def measure_peak_memory(
 ):
     proc_main = psutil.Process()
     peak_mem = 0
+    result = {
+            "peak_mem": peak_mem,
+    }
     stop_event = threading.Event()
 
     initial_mem = _memory_tree(proc_main)
@@ -212,11 +218,12 @@ def measure_peak_memory(
     t.start()
 
     try:
-        yield
+        yield result
     finally:
         stop_event.set()
         t.join()
 
+    result["peak_mem"] = (peak_mem - initial_mem) / (1024**2)
     print(f"Initial memory: {initial_mem / 1024**2:.3f} MB")  # TODO (Ted): Not just print, also need to write to some peak memory object.
     print(f"Program peak memory: {peak_mem / 1024**2:.3f} MB")  # TODO (Ted): Not just print, also need to write to some peak memory object.
     print(f"Synthesizer peak memory: {(peak_mem - initial_mem) / 1024**2:.3f} MB")  # TODO (Ted): Not just print, also need to write to some peak memory object.

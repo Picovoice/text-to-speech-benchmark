@@ -10,6 +10,7 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
+    Union,
 )
 
 import matplotlib.pyplot as plt
@@ -28,13 +29,7 @@ DEFAULT_RESULTS_FOLDER = os.path.join(os.path.dirname(__file__), "results", "dat
 DEFAULT_DATASET = TextDatasets.TASKMASTER2
 
 TEST_MEMORY_SENTENCE = (
-    "The sun dipped below the horizon, casting a warm amber glow over the quiet streets. "
-    "In the distance, the faint hum of a bicycle bell mingled with the rustling leaves, creating a "
-    "rhythm only the evening could compose. Cats slinked along fences, their eyes gleaming like tiny "
-    "lanterns, while the smell of freshly baked bread drifted from a corner bakery. Somewhere, a piano "
-    "played a lonely tune, echoing through narrow alleys and inviting passersby to pause and listen, "
-    "even for just a moment. The world felt suspended between the hum of everyday life and the whisper "
-    "of something magical waiting to unfold."
+    "A fox wandered through the forest at sunrise, wondering why birds seemed to know a secret it didn’t."
 )
 
 
@@ -100,8 +95,14 @@ class Stats:
         self._output_folder = os.path.join(results_folder or DEFAULT_RESULTS_FOLDER)
         os.makedirs(self._output_folder, exist_ok=True)
 
-    def accumulate(self, timing_result: TimingResult) -> None:
-        self._results.append(timing_result)
+    def accumulate(
+            self,
+            result: Union[
+                TimingResult,
+                dict[int, float],
+            ],
+    ) -> None:
+        self._results.append(result)
 
     def _filter_outliers(self, results: Sequence[TimingResult]) -> Sequence[TimingResult]:
         filtered_results = []
@@ -113,82 +114,105 @@ class Stats:
 
         return filtered_results
 
-    def save_results(self) -> None:
-        results = self._filter_outliers(self._results)
+    def save_results(
+            self,
+            save_only_memory_result: bool,
+    ) -> None:
+        if save_only_memory_result:
+            result = self._results
+            assert len(result) == 1
+            result = result[0]
 
-        num_sentences = len(results)
+            result_json_path = os.path.join(
+                    self._output_folder,
+                    f"results_tts_{self._tts_type_string}.json",
+            )
 
-        mean = TimingResult.mean_from_results(results)
-        std = TimingResult.std_from_results(results)
+            with open(result_json_path, "r") as file:
+                data = json.load(file)
 
-        print("Summary statistics:")
-        print(f"Total number of sentences: {num_sentences}")
-        print(
-            "Voice Assistant Response Time: "
-            f"{mean.voice_assistant_response_time:.2f} +- {std.first_token_to_speech:.2f} s")
-        print(f"Time to First Token: {mean.time_to_first_token:.2f} +- {std.time_to_first_token:.2f} s")
-        print(f"First Token to Speech: {mean.first_token_to_speech:.2f} +- {std.first_token_to_speech:.2f} s")
-        print(f"TTS processing time: {mean.tts_process_seconds:.2f} +- {std.tts_process_seconds:.2f} s")
-        print(f"Mean number of words per sentence: {mean.num_words:.1f} +- {std.num_words:.1f}")
-        print(f"Mean tokens per second: {mean.num_tokens_per_second:.2f} +- {std.num_tokens_per_second:.2f}")
-        
-        print(f"Core time: {mean.core_time:.2f} +- {std.core_time:.2f}")
-        print(f"Accumulated audio seconds: {mean.accumulated_audio_seconds:.2f} +- {std.accumulated_audio_seconds:.2f}")
-        print(f"Core hour ratio: {mean.core_hour_ratio:.2f} +- {std.core_hour_ratio:.2f}")
+            data.setdefault("peak_memory_dict", {}).update(result)
 
-        fig, axs = plt.subplots(3, 2, figsize=(14, 8))
-        axs[0, 0].hist([r.voice_assistant_response_time for r in self._results], bins=10)
-        axs[0, 0].set_title('voice_assistant_response_time')
-        axs[0, 1].hist([r.time_to_first_token for r in self._results], bins=10)
-        axs[0, 1].set_title('time_to_first_token')
-        axs[0, 1].axvline(x=self.MAX_LLM_DELAY_SECONDS, color='r', linestyle='--')
-        axs[1, 0].hist([r.first_token_to_speech for r in self._results], bins=10)
-        axs[1, 0].set_title('first_token_to_speech')
-        axs[1, 1].hist([r.num_words for r in self._results], bins=10)
-        axs[1, 1].set_title('num_words')
-        axs[2, 0].hist([r.num_tokens_per_second for r in self._results], bins=10)
-        axs[2, 0].set_title('num_tokens_per_second')
-        axs[2, 1].hist([r.tts_process_seconds for r in self._results], bins=10)
-        axs[2, 1].set_title('tts_process_seconds')
+            with open(result_json_path, "w") as f:
+                json.dump(data, f, indent=4)
 
-        axs[2, 1].hist([r.core_time for r in self._results], bins=10)
-        axs[2, 1].set_title('core_time')
-        axs[2, 1].hist([r.accumulated_audio_seconds for r in self._results], bins=10)
-        axs[2, 1].set_title('accumulated_audio_seconds')
-        axs[2, 1].hist([r.core_hour_ratio for r in self._results], bins=10)
-        axs[2, 1].set_title('core_hour_ratio')
+            print("Results saved to:", self._output_folder)
+        else:
+            results = self._filter_outliers(self._results)
+
+            num_sentences = len(results)
+
+            mean = TimingResult.mean_from_results(results)
+            std = TimingResult.std_from_results(results)
+
+            print("Summary statistics:")
+            print(f"Total number of sentences: {num_sentences}")
+            print(
+                "Voice Assistant Response Time: "
+                f"{mean.voice_assistant_response_time:.2f} +- {std.first_token_to_speech:.2f} s")
+            print(f"Time to First Token: {mean.time_to_first_token:.2f} +- {std.time_to_first_token:.2f} s")
+            print(f"First Token to Speech: {mean.first_token_to_speech:.2f} +- {std.first_token_to_speech:.2f} s")
+            print(f"TTS processing time: {mean.tts_process_seconds:.2f} +- {std.tts_process_seconds:.2f} s")
+            print(f"Mean number of words per sentence: {mean.num_words:.1f} +- {std.num_words:.1f}")
+            print(f"Mean tokens per second: {mean.num_tokens_per_second:.2f} +- {std.num_tokens_per_second:.2f}")
+
+            print(f"Core time: {mean.core_time:.2f} +- {std.core_time:.2f}")
+            print(f"Accumulated audio seconds: {mean.accumulated_audio_seconds:.2f} +- {std.accumulated_audio_seconds:.2f}")
+            print(f"Core hour ratio: {mean.core_hour_ratio:.2f} +- {std.core_hour_ratio:.2f}")
+
+            fig, axs = plt.subplots(3, 2, figsize=(14, 8))
+            axs[0, 0].hist([r.voice_assistant_response_time for r in self._results], bins=10)
+            axs[0, 0].set_title('voice_assistant_response_time')
+            axs[0, 1].hist([r.time_to_first_token for r in self._results], bins=10)
+            axs[0, 1].set_title('time_to_first_token')
+            axs[0, 1].axvline(x=self.MAX_LLM_DELAY_SECONDS, color='r', linestyle='--')
+            axs[1, 0].hist([r.first_token_to_speech for r in self._results], bins=10)
+            axs[1, 0].set_title('first_token_to_speech')
+            axs[1, 1].hist([r.num_words for r in self._results], bins=10)
+            axs[1, 1].set_title('num_words')
+            axs[2, 0].hist([r.num_tokens_per_second for r in self._results], bins=10)
+            axs[2, 0].set_title('num_tokens_per_second')
+            axs[2, 1].hist([r.tts_process_seconds for r in self._results], bins=10)
+            axs[2, 1].set_title('tts_process_seconds')
+
+            axs[2, 1].hist([r.core_time for r in self._results], bins=10)
+            axs[2, 1].set_title('core_time')
+            axs[2, 1].hist([r.accumulated_audio_seconds for r in self._results], bins=10)
+            axs[2, 1].set_title('accumulated_audio_seconds')
+            axs[2, 1].hist([r.core_hour_ratio for r in self._results], bins=10)
+            axs[2, 1].set_title('core_hour_ratio')
 
 
-        output_path = os.path.join(self._output_folder, f"hists_tts_{self._tts_type_string}.png")
-        plt.savefig(output_path)
-        plt.close()
+            output_path = os.path.join(self._output_folder, f"hists_tts_{self._tts_type_string}.png")
+            plt.savefig(output_path)
+            plt.close()
 
-        results_json_path = os.path.join(self._output_folder, f"results_tts_{self._tts_type_string}.json")
-        results_dict = {
-            "total_sentences": num_sentences,
-            "mean_voice_assistant_response_time": mean.voice_assistant_response_time,
-            "mean_time_to_first_token": mean.time_to_first_token,
-            "mean_first_token_to_speech": mean.first_token_to_speech,
-            "mean_tts_process_seconds": mean.tts_process_seconds,
-            "mean_num_words": mean.num_words,
-            "mean_num_tokens_per_second": mean.num_tokens_per_second,
-            "mean_core_time": mean.core_time,
-            "mean_accumulated_audio_seconds": mean.accumulated_audio_seconds,
-            "mean_core_hour_ratio": mean.core_hour_ratio,
-            "std_voice_assistant_response_time": std.voice_assistant_response_time,
-            "std_time_to_first_token": std.time_to_first_token,
-            "std_first_token_to_speech": std.first_token_to_speech,
-            "std_tts_process_seconds": std.tts_process_seconds,
-            "std_num_words": std.num_words,
-            "std_num_tokens_per_second": std.num_tokens_per_second,
-            "std_core_time": std.core_time,
-            "std_accumulated_audio_seconds": std.accumulated_audio_seconds,
-            "std_core_hour_ratio": std.core_hour_ratio,
-        }
-        with open(results_json_path, "w") as f:
-            json.dump(results_dict, f, indent=4)
+            results_json_path = os.path.join(self._output_folder, f"results_tts_{self._tts_type_string}.json")
+            results_dict = {
+                "total_sentences": num_sentences,
+                "mean_voice_assistant_response_time": mean.voice_assistant_response_time,
+                "mean_time_to_first_token": mean.time_to_first_token,
+                "mean_first_token_to_speech": mean.first_token_to_speech,
+                "mean_tts_process_seconds": mean.tts_process_seconds,
+                "mean_num_words": mean.num_words,
+                "mean_num_tokens_per_second": mean.num_tokens_per_second,
+                "mean_core_time": mean.core_time,
+                "mean_accumulated_audio_seconds": mean.accumulated_audio_seconds,
+                "mean_core_hour_ratio": mean.core_hour_ratio,
+                "std_voice_assistant_response_time": std.voice_assistant_response_time,
+                "std_time_to_first_token": std.time_to_first_token,
+                "std_first_token_to_speech": std.first_token_to_speech,
+                "std_tts_process_seconds": std.tts_process_seconds,
+                "std_num_words": std.num_words,
+                "std_num_tokens_per_second": std.num_tokens_per_second,
+                "std_core_time": std.core_time,
+                "std_accumulated_audio_seconds": std.accumulated_audio_seconds,
+                "std_core_hour_ratio": std.core_hour_ratio,
+            }
+            with open(results_json_path, "w") as f:
+                json.dump(results_dict, f, indent=4)
 
-        print("Results saved to:", self._output_folder)
+            print("Results saved to:", self._output_folder)
 
     @staticmethod
     def load_results(json_path: str, scale: float = 1.0) -> Tuple[Synthesizers, TimingResult, TimingResult]:
@@ -348,12 +372,7 @@ async def _run_benchmark_iteration_for_time_measurement(
                 accumulated_audio_seconds=timer.accumulated_audio_seconds,
                 core_hour_ratio=core_hour_ratio,
         )
-        stats.accumulate(timing_result=timing_result)
-
-        # print(f"timer.core_time: {timer.core_time}")
-        # print(f"timer.accumulated_audio_seconds: {timer.accumulated_audio_seconds}")
-        # print(f"Core time ratio: {(timer.core_time / timer.accumulated_audio_seconds):.4f}")  # TODO (Ted): Temporary print. Future remove.  # TODO (Ted): Need to plot this instead of printing.
-        # print(f"Core time inverse ratio: {(timer.accumulated_audio_seconds / max(0.01, timer.core_time)):.4f}")  # TODO (Ted): Temporary print. Future remove.  # TODO (Ted): Need to plot this instead of printing.
+        stats.accumulate(result=timing_result)
 
         if verbose:
             print(f"Question: {sentence}")
@@ -373,11 +392,11 @@ async def _run_benchmark_iteration_for_time_measurement(
 
 async def _run_benchmark_iteration_for_memory_measurement(
         sentence: str,
+        timer: Timer,
+        stats: Stats,
         args: argparse.Namespace,
 ) -> None:
-    timer = Timer()
-
-    with measure_peak_memory():
+    with measure_peak_memory() as peak_memory_result:
         synthesizer_init_kwargs = get_synthesizer_init_kwargs(args)
         synthesizer = Synthesizer.create(
                 Synthesizers(args.synthesizer),
@@ -395,18 +414,36 @@ async def _run_benchmark_iteration_for_memory_measurement(
         else:
             synthesizer.synthesize(text_stream=trivial_generator())
 
-        synthesizer.terminate()
+    timer.wait_for_first_audio()
 
+    if not timer.skip_this_result:
+        memory_result = {
+                str(timer.num_tokens): peak_memory_result["peak_mem"],
+        }
+        stats.accumulate(result=memory_result)
+
+    synthesizer.terminate()
 
 async def main(args: argparse.Namespace) -> None:
     test_memory_size_multiple = args.test_memory_size_multiple
     if test_memory_size_multiple >= 1:
+        timer = Timer()
+
+        tts_type = Synthesizers(args.synthesizer)
+        results_folder = args.results_folder
+
+        stats = Stats(tts=tts_type, results_folder=results_folder)
+
         await _run_benchmark_iteration_for_memory_measurement(
                 sentence=TEST_MEMORY_SENTENCE * test_memory_size_multiple,
+                timer=timer,
+                stats=stats,
                 args=args,
         )
 
-        # TODO (Ted): Save result.
+        stats.save_results(
+                save_only_memory_result=True,
+        )
     else:
         num_interactions = args.num_interactions
         results_folder = args.results_folder
@@ -446,7 +483,9 @@ async def main(args: argparse.Namespace) -> None:
                 counter=counter)
             counter += 1
 
-        stats.save_results()
+        stats.save_results(
+                save_only_memory_result=False,
+        )
 
         synthesizer.terminate()
 
