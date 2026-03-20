@@ -591,6 +591,7 @@ class ChatterboxTurboSynthesizer(Synthesizer):
 
     def __init__(
             self,
+            save_audio: bool = True,
             **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -598,6 +599,8 @@ class ChatterboxTurboSynthesizer(Synthesizer):
                 audio_encoding=self.AUDIO_ENCODING,
                 **kwargs,
         )
+
+        self._save_audio = save_audio
 
         from chatterbox.tts_turbo import ChatterboxTurboTTS
 
@@ -613,22 +616,29 @@ class ChatterboxTurboSynthesizer(Synthesizer):
     ):
         text = self._read_text_stream(text_stream)
 
-        self._timer.maybe_log_time_first_synthesis_request()
+        with CoreTimeMeasure() as core_time_measure:
+            with include_measurement(core_time_measure):
+                self._timer.maybe_log_time_first_synthesis_request()
 
-        wav = self._model.generate(text).squeeze(0)
+                wav = self._model.generate(text).squeeze(0)
 
-        wav = torch.clamp(
-                wav,
-                -1,
-                1,
-        ) * INT16_SCALE
-        wav = wav.to(torch.int16).numpy()
+                wav = torch.clamp(
+                        wav,
+                        -1,
+                        1,
+                ) * INT16_SCALE
+                wav = wav.to(torch.int16).numpy()
 
-        self._timer.maybe_log_time_first_audio()
+                self._timer.maybe_log_time_first_audio()
 
-        self._audio_sink.add(data=wav)
+                wav_seconds = len(wav) / self.SAMPLE_RATE
+                self._timer.accumulate_audio_seconds(wav_seconds)
+                if self._save_audio:
+                    self._audio_sink.add(data=wav)
 
-        self._timer.log_time_last_audio()
+                self._timer.log_time_last_audio()
+
+            self._timer.core_time = core_time_measure.accum_time
 
     def __str__(self) -> str:
         return f"{self.NAME}"
@@ -644,6 +654,7 @@ class KittenSynthesizer(Synthesizer):
 
     def __init__(
             self,
+            save_audio: bool = True,
             **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -651,6 +662,8 @@ class KittenSynthesizer(Synthesizer):
                 audio_encoding=self.AUDIO_ENCODING,
                 **kwargs,
         )
+
+        self._save_audio = save_audio
 
         from kittentts import KittenTTS
 
@@ -671,25 +684,32 @@ class KittenSynthesizer(Synthesizer):
             print("Text input length reached 400! Kitten-TTS has a limit on sentence length. Skipping this sentence.")
             return
 
-        self._timer.maybe_log_time_first_synthesis_request()
+        with CoreTimeMeasure() as core_time_measure:
+            with include_measurement(core_time_measure):
+                self._timer.maybe_log_time_first_synthesis_request()
 
-        audio = self._model.generate(
-                text,
-                voice=self.VOICE_ID,
-        )
+                audio = self._model.generate(
+                        text,
+                        voice=self.VOICE_ID,
+                )
 
-        audio = np.clip(
-                audio,
-                -1,
-                1,
-        ) * INT16_SCALE
-        audio = audio.astype(np.int16)
+                audio = np.clip(
+                        audio,
+                        -1,
+                        1,
+                ) * INT16_SCALE
+                audio = audio.astype(np.int16)
 
-        self._timer.maybe_log_time_first_audio()
+                self._timer.maybe_log_time_first_audio()
 
-        self._audio_sink.add(data=audio)
+                audio_seconds = len(audio) / self.SAMPLE_RATE
+                self._timer.accumulate_audio_seconds(audio_seconds)
+                if self._save_audio:
+                    self._audio_sink.add(data=audio)
 
-        self._timer.log_time_last_audio()
+                self._timer.log_time_last_audio()
+
+            self._timer.core_time = core_time_measure.accum_time
 
     def __str__(self) -> str:
         return f"{self.NAME}"
@@ -703,6 +723,7 @@ class PocketSynthesizer(Synthesizer):
 
     def __init__(
             self,
+            save_audio: bool = True,
             **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -710,6 +731,8 @@ class PocketSynthesizer(Synthesizer):
                 audio_encoding=self.AUDIO_ENCODING,
                 **kwargs,
         )
+
+        self._save_audio = save_audio
 
         from pocket_tts import TTSModel
 
@@ -726,26 +749,33 @@ class PocketSynthesizer(Synthesizer):
     ):
         text = self._read_text_stream(text_stream)
 
-        self._timer.maybe_log_time_first_synthesis_request()
+        with CoreTimeMeasure() as core_time_measure:
+            with include_measurement(core_time_measure):
+                self._timer.maybe_log_time_first_synthesis_request()
 
-        audio_chunks = self._model.generate_audio_stream(
-            model_state=self._voice_state,
-            text_to_generate=text,
-        )
+                audio_chunks = self._model.generate_audio_stream(
+                    model_state=self._voice_state,
+                    text_to_generate=text,
+                )
 
-        for chunk in audio_chunks:
-            self._timer.maybe_log_time_first_audio()
+                for chunk in audio_chunks:
+                    self._timer.maybe_log_time_first_audio()
 
-            chunk = torch.clamp(
-                    chunk,
-                    -1,
-                    1,
-            ) * INT16_SCALE
-            chunk = chunk.to(torch.int16).numpy()
+                    chunk = torch.clamp(
+                            chunk,
+                            -1,
+                            1,
+                    ) * INT16_SCALE
+                    chunk = chunk.to(torch.int16).numpy()
 
-            self._audio_sink.add(data=chunk)
+                    chunk_seconds = len(chunk) / self.SAMPLE_RATE
+                    self._timer.accumulate_audio_seconds(chunk_seconds)
+                    if self._save_audio:
+                        self._audio_sink.add(data=chunk)
 
-        self._timer.log_time_last_audio()
+                self._timer.log_time_last_audio()
+
+            self._timer.core_time = core_time_measure.accum_time
 
     def __str__(self) -> str:
         return f"{self.NAME}"
@@ -762,6 +792,7 @@ class NeuTTSNanoSynthesizer(Synthesizer):
             self,
             ref_text_path: str,
             ref_codes_path: str,
+            save_audio: bool = True,
             **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -769,6 +800,8 @@ class NeuTTSNanoSynthesizer(Synthesizer):
                 audio_encoding=self.AUDIO_ENCODING,
                 **kwargs,
         )
+
+        self._save_audio = save_audio
 
         from neutts import NeuTTS
 
@@ -795,25 +828,32 @@ class NeuTTSNanoSynthesizer(Synthesizer):
     ):
         input_text = self._read_text_stream(text_stream)
 
-        self._timer.maybe_log_time_first_synthesis_request()
+        with CoreTimeMeasure() as core_time_measure:
+            with include_measurement(core_time_measure):
+                self._timer.maybe_log_time_first_synthesis_request()
 
-        for chunk in self._model.infer_stream(
-                text=input_text,
-                ref_codes=self._ref_codes,
-                ref_text=self._ref_text,
-        ):
-            self._timer.maybe_log_time_first_audio()
+                for chunk in self._model.infer_stream(
+                        text=input_text,
+                        ref_codes=self._ref_codes,
+                        ref_text=self._ref_text,
+                ):
+                    self._timer.maybe_log_time_first_audio()
 
-            chunk = np.clip(
-                    chunk,
-                    -1,
-                    1,
-            ) * INT16_SCALE
-            chunk = chunk.astype(np.int16)
+                    chunk = np.clip(
+                            chunk,
+                            -1,
+                            1,
+                    ) * INT16_SCALE
+                    chunk = chunk.astype(np.int16)
 
-            self._audio_sink.add(data=chunk)
+                    chunk_seconds = len(chunk) / self.SAMPLE_RATE
+                    self._timer.accumulate_audio_seconds(chunk_seconds)
+                    if self._save_audio:
+                        self._audio_sink.add(data=chunk)
 
-        self._timer.log_time_last_audio()
+                self._timer.log_time_last_audio()
+
+            self._timer.core_time = core_time_measure.accum_time
 
     def __str__(self) -> str:
         return f"{self.NAME}"
@@ -827,6 +867,7 @@ class PiperSynthesizer(Synthesizer):
     def __init__(
             self,
             model_path: str,
+            save_audio: bool = True,
             **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -834,6 +875,8 @@ class PiperSynthesizer(Synthesizer):
                 audio_encoding=self.AUDIO_ENCODING,
                 **kwargs,
         )
+
+        self._save_audio = save_audio
 
         from piper.voice import PiperVoice as piper
 
@@ -849,23 +892,30 @@ class PiperSynthesizer(Synthesizer):
     ):
         text = self._read_text_stream(text_stream)
 
-        self._timer.maybe_log_time_first_synthesis_request()
+        with CoreTimeMeasure() as core_time_measure:
+            with include_measurement(core_time_measure):
+                self._timer.maybe_log_time_first_synthesis_request()
 
-        chunks = self._model.synthesize(text)
+                chunks = self._model.synthesize(text)
 
-        for chunk in chunks:
-            self._timer.maybe_log_time_first_audio()
+                for chunk in chunks:
+                    self._timer.maybe_log_time_first_audio()
 
-            chunk_pcm = np.clip(
-                    chunk.audio_float_array,
-                    -1,
-                    1,
-            ) * INT16_SCALE
-            chunk_pcm = chunk_pcm.astype(np.int16)
+                    chunk = np.clip(
+                            chunk.audio_float_array,
+                            -1,
+                            1,
+                    ) * INT16_SCALE
+                    chunk = chunk.astype(np.int16)
 
-            self._audio_sink.add(data=chunk_pcm)
+                    chunk_seconds = len(chunk) / self.SAMPLE_RATE
+                    self._timer.accumulate_audio_seconds(chunk_seconds)
+                    if self._save_audio:
+                        self._audio_sink.add(data=chunk)
 
-        self._timer.log_time_last_audio()
+                self._timer.log_time_last_audio()
+
+            self._timer.core_time = core_time_measure.accum_time
 
     def __str__(self) -> str:
         return f"{self.NAME}"
@@ -880,6 +930,7 @@ class SopranoSynthesizer(Synthesizer):
 
     def __init__(
             self,
+            save_audio: bool = True,
             **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -887,6 +938,8 @@ class SopranoSynthesizer(Synthesizer):
                 audio_encoding=self.AUDIO_ENCODING,
                 **kwargs,
         )
+
+        self._save_audio = save_audio
 
         from soprano import SopranoTTS
 
@@ -905,32 +958,39 @@ class SopranoSynthesizer(Synthesizer):
     ):
         text = self._read_text_stream(text_stream)
 
-        self._timer.maybe_log_time_first_synthesis_request()
+        with CoreTimeMeasure() as core_time_measure:
+            with include_measurement(core_time_measure):
+                self._timer.maybe_log_time_first_synthesis_request()
 
-        stream = self._model.infer_stream(
-                text,
-        )
+                stream = self._model.infer_stream(
+                        text,
+                )
 
-        for chunk in stream:
-            self._timer.maybe_log_time_first_audio()
+                for chunk in stream:
+                    self._timer.maybe_log_time_first_audio()
 
-            if isinstance(chunk, torch.Tensor):
-                chunk = chunk.detach().cpu()
+                    if isinstance(chunk, torch.Tensor):
+                        chunk = chunk.detach().cpu()
 
-            if chunk.dim() == 2 and chunk.shape[0] == 1:
-                chunk = chunk[0]
+                    if chunk.dim() == 2 and chunk.shape[0] == 1:
+                        chunk = chunk[0]
 
-            chunk = torch.clamp(
-                    chunk,
-                    -1,
-                    1,
-            ) * INT16_SCALE
+                    chunk = torch.clamp(
+                            chunk,
+                            -1,
+                            1,
+                    ) * INT16_SCALE
 
-            chunk = chunk.to(torch.int16).numpy()
+                    chunk = chunk.to(torch.int16).numpy()
 
-            self._audio_sink.add(data=chunk)
+                    chunk_seconds = len(chunk) / self.SAMPLE_RATE
+                    self._timer.accumulate_audio_seconds(chunk_seconds)
+                    if self._save_audio:
+                        self._audio_sink.add(data=chunk)
 
-        self._timer.log_time_last_audio()
+                self._timer.log_time_last_audio()
+
+            self._timer.core_time = core_time_measure.accum_time
 
     def __str__(self) -> str:
         return f"{self.NAME}"
