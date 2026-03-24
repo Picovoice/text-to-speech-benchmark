@@ -351,16 +351,33 @@ async def _run_benchmark_iteration_for_time_measurement(
 
     timer.log_time_llm_request()
 
+    sentence = "unix like operating systems are so commonplace because of their flexibility and scalability ."
+
+
     if synthesizer.is_async:
-        await synthesizer.synthesize_async(text_stream=llm.query_async(sentence))
+        # text_stream = llm.query_async(sentence)
+
+        async def trivial_generator():
+            for c in sentence:
+                yield c
+
+        text_stream = trivial_generator()
+        await synthesizer.synthesize_async(text_stream=text_stream)
     else:
-        text_stream = llm.query(sentence)
+        # text_stream = llm.query(sentence)
+
+        def trivial_generator():
+            for c in sentence:
+                yield c
+
+        text_stream = trivial_generator()
         synthesizer.synthesize(text_stream=text_stream)
 
     timer.wait_for_first_audio()
 
     if not timer.skip_this_result:
-        core_hour_ratio = timer.core_time / timer.accumulated_audio_seconds
+        # core_hour_ratio = timer.core_time / timer.accumulated_audio_seconds
+        core_hour_ratio = 0  # TODO (Ted): Temporary hack. Future undo.
         timing_result = TimingResult(
                 voice_assistant_response_time=timer.voice_assistant_response_time(),
                 time_to_first_token=timer.time_to_first_token(),

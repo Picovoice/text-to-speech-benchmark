@@ -141,8 +141,15 @@ class ElevenLabsSynthesizer(Synthesizer):
     URL_TEMPLATE = "https://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream?" \
         "model_id=eleven_turbo_v2_5&output_format=pcm_22050"
 
-    def __init__(self, api_key: str, **kwargs: Any) -> None:
+    def __init__(
+            self,
+            api_key: str,
+            save_audio: bool = True,
+            **kwargs: Any,
+    ) -> None:
         super().__init__(sample_rate=self.SAMPLE_RATE, audio_encoding=self.AUDIO_ENCODING, **kwargs)
+
+        self._save_audio = save_audio
 
         self._headers = {
             "xi-api-key": api_key,
@@ -171,12 +178,14 @@ class ElevenLabsSynthesizer(Synthesizer):
             self._url,
             json=payload,
             headers=self._headers,
-            params={"output_format": "pcm_22500"}
+            params={"output_format": "pcm_22050"}
         )
 
         for chunk in response.iter_content(chunk_size=self.CHUNK_SIZE):
             self._timer.maybe_log_time_first_audio()
-            self._audio_sink.add(data=chunk)
+
+            if self._save_audio:
+                self._audio_sink.add(data=chunk)
 
         self._timer.log_time_last_audio()
 
@@ -195,8 +204,15 @@ class ElevenLabsWebSocketSynthesizer(Synthesizer):
         "wss://api.elevenlabs.io/v1/text-to-speech/{voice_id}/stream-input?" \
         "model_id=eleven_turbo_v2_5&output_format=pcm_22050"
 
-    def __init__(self, api_key: str, **kwargs: Any) -> None:
+    def __init__(
+            self,
+            api_key: str,
+            save_audio: bool = True,
+            **kwargs: Any,
+    ) -> None:
         super().__init__(sample_rate=self.SAMPLE_RATE, audio_encoding=self.AUDIO_ENCODING, **kwargs)
+
+        self._save_audio = save_audio
 
         self._api_key = api_key
         self._uri = self.URI.format(voice_id=self.VOICE_ID)
@@ -237,7 +253,8 @@ class ElevenLabsWebSocketSynthesizer(Synthesizer):
                         data = json.loads(message)
                         if data.get("audio"):
                             self._timer.maybe_log_time_first_audio()
-                            self._audio_sink.add(data=base64.b64decode(data["audio"]))
+                            if self._save_audio:
+                                self._audio_sink.add(data=base64.b64decode(data["audio"]))
                         elif data.get('isFinal'):
                             break
                     except websockets.exceptions.ConnectionClosed:
@@ -276,11 +293,14 @@ class AzureSynthesizer(Synthesizer):
             self,
             speech_key: str,
             speech_region: str,
+            save_audio: bool = True,
             **kwargs: Any
     ) -> None:
         # noinspection PyPackageRequirements
         import azure.cognitiveservices.speech as speechsdk
         super().__init__(sample_rate=self.SAMPLE_RATE, audio_encoding=self.AUDIO_ENCODING, **kwargs)
+
+        self._save_audio = save_audio
 
         speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=speech_region)
         speech_config.speech_synthesis_voice_name = self.VOICE_NAME
@@ -303,7 +323,8 @@ class AzureSynthesizer(Synthesizer):
         num_reads = stream.read_data(buffer)
         while num_reads > 0:
             self._timer.maybe_log_time_first_audio()
-            self._audio_sink.add(data=buffer)
+            if self._save_audio:
+                self._audio_sink.add(data=buffer)
             buffer = bytes(self.CHUNK_SIZE)
             num_reads = stream.read_data(buffer)
 
@@ -320,11 +341,18 @@ class AmazonSynthesizer(Synthesizer):
     CHUNK_SIZE = 10 * 1024
     VOICE = "Joanna"
 
-    def __init__(self, aws_profile_name: str, **kwargs: Any) -> None:
+    def __init__(
+            self,
+            aws_profile_name: str,
+            save_audio: bool = True,
+            **kwargs: Any,
+    ) -> None:
         super().__init__(
             sample_rate=self.SAMPLE_RATE,
             audio_encoding=AudioEncodings.FILE_BUFFER,
             **kwargs)
+
+        self._save_audio = save_audio
 
         from boto3 import Session
         session = Session(profile_name=aws_profile_name)
@@ -346,7 +374,8 @@ class AmazonSynthesizer(Synthesizer):
                 data = stream.read(self.CHUNK_SIZE)
                 while len(data) > 0:
                     self._timer.maybe_log_time_first_audio()
-                    self._audio_sink.add(data=data)
+                    if self._save_audio:
+                        self._audio_sink.add(data=data)
                     data = stream.read(self.CHUNK_SIZE)
         else:
             raise ValueError(f"Failed to synthesize text: `{text}`")
@@ -371,12 +400,15 @@ class OpenAISynthesizer(Synthesizer):
             api_key: str,
             model_name: str = DEFAULT_MODEL_NAME,
             voice_name: Literal["alloy", "echo", "fable", "onyx", "nova", "shimmer"] = DEFAULT_VOICE_NAME,
+            save_audio: bool = True,
             **kwargs: Any
     ) -> None:
         super().__init__(
             sample_rate=self.SAMPLE_RATE,
             audio_encoding=self.AUDIO_ENCODING,
             **kwargs)
+
+        self._save_audio = save_audio
 
         self._model_name = model_name
         self._voice_name = voice_name
@@ -395,7 +427,8 @@ class OpenAISynthesizer(Synthesizer):
         ) as response:
             for data in response.iter_bytes(chunk_size=self.CHUNK_SIZE):
                 self._timer.maybe_log_time_first_audio()
-                self._audio_sink.add(data=data)
+                if self._save_audio:
+                    self._audio_sink.add(data=data)
             self._timer.log_time_last_audio()
 
     def __str__(self) -> str:
