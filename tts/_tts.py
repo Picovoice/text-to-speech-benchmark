@@ -132,8 +132,6 @@ class Synthesizer:
 
 
 class ElevenLabsSynthesizer(Synthesizer):
-    NAME = "ElevenLabs"
-
     SAMPLE_RATE = 22050
     AUDIO_ENCODING = AudioEncodings.BYTES
     CHUNK_SIZE = 10 * 1024
@@ -192,12 +190,10 @@ class ElevenLabsSynthesizer(Synthesizer):
         self._timer.log_time_last_audio()
 
     def __str__(self) -> str:
-        return f"{self.NAME}"
+        return "ElevenLabs"
 
 
 class ElevenLabsWebSocketSynthesizer(Synthesizer):
-    NAME = "ElevenLabs WebSocket"
-
     SAMPLE_RATE = 22050
     AUDIO_ENCODING = AudioEncodings.BYTES
 
@@ -280,12 +276,10 @@ class ElevenLabsWebSocketSynthesizer(Synthesizer):
         return True
 
     def __str__(self) -> str:
-        return f"{self.NAME}"
+        return "ElevenLabs WebSocket"
 
 
 class AzureSynthesizer(Synthesizer):
-    NAME = "Azure TTS"
-
     SAMPLE_RATE = 24000
     CHUNK_SIZE = 10 * 1024
     AUDIO_ENCODING = AudioEncodings.BYTES
@@ -333,12 +327,10 @@ class AzureSynthesizer(Synthesizer):
         self._timer.log_time_last_audio()
 
     def __str__(self) -> str:
-        return f"{self.NAME}"
+        return "Azure TTS"
 
 
 class AmazonSynthesizer(Synthesizer):
-    NAME = "Amazon Polly"
-
     SAMPLE_RATE = 22050
     CHUNK_SIZE = 10 * 1024
     VOICE = "Joanna"
@@ -385,12 +377,10 @@ class AmazonSynthesizer(Synthesizer):
         self._timer.log_time_last_audio()
 
     def __str__(self) -> str:
-        return f"{self.NAME}"
+        return "Amazon Polly"
 
 
 class OpenAISynthesizer(Synthesizer):
-    NAME = "OpenAI TTS"
-
     SAMPLE_RATE = 24000
     AUDIO_ENCODING = AudioEncodings.BYTES
     CHUNK_SIZE = 10 * 1024
@@ -434,11 +424,10 @@ class OpenAISynthesizer(Synthesizer):
             self._timer.log_time_last_audio()
 
     def __str__(self) -> str:
-        return f"{self.NAME}"
+        return "OpenAI TTS"
 
 
 class PicovoiceOrcaSynthesizer(Synthesizer):
-    NAME = "Picovoice Orca"
     AUDIO_ENCODING = AudioEncodings.INT16
 
     @dataclass
@@ -541,11 +530,10 @@ class PicovoiceOrcaSynthesizer(Synthesizer):
         self._orca.delete()
 
     def __str__(self) -> str:
-        return f"{self.NAME}"
+        return "Picovoice Orca"
 
 
 class KokoroSynthesizer(Synthesizer):
-    NAME = "Kokoro TTS"
     SAMPLE_RATE = 24000
     AUDIO_ENCODING = AudioEncodings.INT16
     LANGUAGE_CODE = "a"
@@ -614,11 +602,10 @@ class KokoroSynthesizer(Synthesizer):
             self._timer.core_time = core_time_measure.accum_time
 
     def __str__(self) -> str:
-        return f"{self.NAME}"
+        return "Kokoro TTS"
 
 
 class ChatterboxTurboSynthesizer(Synthesizer):
-    NAME = "Chatterbox TTS Turbo"
     SAMPLE_RATE = 24000
     AUDIO_ENCODING = AudioEncodings.INT16
     DEVICE = "cpu"
@@ -675,11 +662,10 @@ class ChatterboxTurboSynthesizer(Synthesizer):
             self._timer.core_time = core_time_measure.accum_time
 
     def __str__(self) -> str:
-        return f"{self.NAME}"
+        return "Chatterbox TTS Turbo"
 
 
 class KittenSynthesizer(Synthesizer):
-    NAME = "Kitten TTS Nano 0.8 INT8"
     SAMPLE_RATE = 24000
     AUDIO_ENCODING = AudioEncodings.INT16
     VOICE_ID = "Bella"
@@ -746,11 +732,10 @@ class KittenSynthesizer(Synthesizer):
             self._timer.core_time = core_time_measure.accum_time
 
     def __str__(self) -> str:
-        return f"{self.NAME}"
+        return "Kitten TTS Nano 0.8 INT8"
 
 
 class PocketSynthesizer(Synthesizer):
-    NAME = "Pocket TTS"
     SAMPLE_RATE = 24000
     AUDIO_ENCODING = AudioEncodings.INT16
     SPEAKER_ID = "alba"
@@ -812,11 +797,10 @@ class PocketSynthesizer(Synthesizer):
             self._timer.core_time = core_time_measure.accum_time
 
     def __str__(self) -> str:
-        return f"{self.NAME}"
+        return "Pocket TTS"
 
 
 class NeuTTSNanoSynthesizer(Synthesizer):
-    NAME = "NeuTTS Nano"
     SAMPLE_RATE = 24000
     AUDIO_ENCODING = AudioEncodings.INT16
     BACKBONE_ID = "neuphonic/neutts-nano-q4-gguf"
@@ -890,11 +874,10 @@ class NeuTTSNanoSynthesizer(Synthesizer):
             self._timer.core_time = core_time_measure.accum_time
 
     def __str__(self) -> str:
-        return f"{self.NAME}"
+        return "NeuTTS Nano"
 
 
 class PiperSynthesizer(Synthesizer):
-    NAME = "Piper TTS"
     SAMPLE_RATE = 16000
     AUDIO_ENCODING = AudioEncodings.INT16
 
@@ -952,11 +935,10 @@ class PiperSynthesizer(Synthesizer):
             self._timer.core_time = core_time_measure.accum_time
 
     def __str__(self) -> str:
-        return f"{self.NAME}"
+        return "Piper TTS"
 
 
 class SopranoSynthesizer(Synthesizer):
-    NAME = "Soprano TTS"
     SAMPLE_RATE = 32000
     AUDIO_ENCODING = AudioEncodings.INT16
     DEVICE = "cpu"
@@ -1027,11 +1009,10 @@ class SopranoSynthesizer(Synthesizer):
             self._timer.core_time = core_time_measure.accum_time
 
     def __str__(self) -> str:
-        return f"{self.NAME}"
+        return "Soprano TTS"
 
 
 class Supertonic2Synthesizer(Synthesizer):
-    NAME = "Supertonic TTS 2"
     SAMPLE_RATE = 44100
     AUDIO_ENCODING = AudioEncodings.INT16
     USE_GPU = False
@@ -1116,11 +1097,10 @@ class Supertonic2Synthesizer(Synthesizer):
             self._timer.core_time = core_time_measure.accum_time
 
     def __str__(self) -> str:
-        return f"{self.NAME}"
+        return "Supertonic TTS 2"
 
 
 class EspeakNGSynthesizer(Synthesizer):
-    NAME = "Espeak NG"
     SAMPLE_RATE = 22050
     AUDIO_ENCODING = AudioEncodings.BYTES
     CHUNK_SIZE_MAX_BYTES = 4096
@@ -1183,7 +1163,7 @@ class EspeakNGSynthesizer(Synthesizer):
             self._timer.core_time = core_time_measure.accum_time
 
     def __str__(self) -> str:
-        return f"{self.NAME}"
+        return "Espeak NG"
 
 
 __all__ = [
