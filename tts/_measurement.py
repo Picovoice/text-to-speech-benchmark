@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from dataclasses import dataclass
+from typing import Optional
 import psutil
 import threading
 import time
@@ -7,12 +8,12 @@ import time
 
 @dataclass
 class Timer:
-    _time_llm_request: float = -1.0
-    _time_first_llm_token: float = -1.0
-    _time_last_llm_token: float = -1.0
-    _time_first_synthesis_request: float = -1.0
-    _time_first_audio: float = -1.0
-    _time_last_audio: float = -1.0
+    _time_llm_request: Optional[float] = None
+    _time_first_llm_token: Optional[float] = None
+    _time_last_llm_token: Optional[float] = None
+    _time_first_synthesis_request: Optional[float] = None
+    _time_first_audio: Optional[float] = None
+    _time_last_audio: Optional[float] = None
     _core_time: float = 0.0
     _accumulated_audio_seconds: float = 0.0
     _num_tokens: int = 0
@@ -26,15 +27,15 @@ class Timer:
         self._time_llm_request = self._get_time()
 
     def maybe_log_time_first_llm_token(self) -> None:
-        if self._time_first_llm_token == -1.0:
+        if self._time_first_llm_token == None:
             self._time_first_llm_token = self._get_time()
 
     def maybe_log_time_first_synthesis_request(self) -> None:
-        if self._time_first_synthesis_request == -1.0:
+        if self._time_first_synthesis_request == None:
             self._time_first_synthesis_request = self._get_time()
 
     def maybe_set_time_first_synthesis_request(self, seconds: float) -> None:
-        if self._time_first_synthesis_request == -1.0:
+        if self._time_first_synthesis_request == None:
             self._time_first_synthesis_request = seconds
 
     def log_time_first_synthesis_request(self) -> None:
@@ -44,7 +45,7 @@ class Timer:
         self._time_last_llm_token = self._get_time()
 
     def maybe_log_time_first_audio(self) -> None:
-        if self._time_first_audio == -1.0:
+        if self._time_first_audio == None:
             self._time_first_audio = self._get_time()
 
     def log_time_last_audio(self) -> None:
@@ -57,39 +58,59 @@ class Timer:
     def num_tokens(self) -> int:
         return self._num_tokens
 
-    def first_token_to_speech(self) -> float:
-        return self._time_first_audio - self._time_first_llm_token
+    def first_token_to_speech(self) -> Optional[float]:
+        if self._time_first_audio is not None and self._time_first_llm_token is not None:
+            return self._time_first_audio - self._time_first_llm_token
+        else:
+            return None
 
-    def time_to_first_token(self) -> float:
-        return self._time_first_llm_token - self._time_llm_request
+    def time_to_first_token(self) -> Optional[float]:
+        if self._time_first_llm_token is not None and self._time_llm_request is not None:
+            return self._time_first_llm_token - self._time_llm_request
+        else:
+            return None
 
-    def tts_process_seconds(self) -> float:
-        return self._time_first_audio - self._time_first_synthesis_request
+    def tts_process_seconds(self) -> Optional[float]:
+        if self._time_first_audio is not None and self._time_first_synthesis_request is not None:
+            return self._time_first_audio - self._time_first_synthesis_request
+        else:
+            return None
 
-    def llm_text_generation_seconds(self) -> float:
-        return self._time_last_llm_token - self._time_first_llm_token
+    def llm_text_generation_seconds(self) -> Optional[float]:
+        if self._time_last_llm_token is not None and self._time_first_llm_token is not None:
+            return self._time_last_llm_token - self._time_first_llm_token
+        else:
+            return None
 
-    def voice_assistant_response_time(self) -> float:
-        return self.first_token_to_speech() + self.time_to_first_token()
+    def voice_assistant_response_time(self) -> Optional[float]:
+        ftts = self.first_token_to_speech()
+        ttft = self.time_to_first_token()
+        if ftts is not None and ttft is not None:
+            return ftts + ttft
+        else:
+            return None
 
-    def num_tokens_per_second(self) -> float:
-        return self._num_tokens / (self._time_last_llm_token - self._time_first_llm_token)
+    def num_tokens_per_second(self) -> Optional[float]:
+        if self._time_last_llm_token is not None and self._time_first_llm_token is not None:
+            return self._num_tokens / (self._time_last_llm_token - self._time_first_llm_token)
+        else:
+            return None
 
     def wait_for_first_audio(self) -> None:
-        while self._time_first_audio == -1.0 and not self._skip_this_result:
+        while self._time_first_audio == None and not self._skip_this_result:
             time.sleep(0.01)
 
     def wait_for_last_audio(self) -> None:
-        while self._time_last_audio == -1.0:
+        while self._time_last_audio == None:
             time.sleep(0.01)
 
     def reset(self) -> None:
-        self._time_llm_request = -1.0
-        self._time_first_llm_token = -1.0
-        self._time_last_llm_token = -1.0
-        self._time_first_synthesis_request = -1.0
-        self._time_first_audio = -1.0
-        self._time_last_audio = -1.0
+        self._time_llm_request = None
+        self._time_first_llm_token = None
+        self._time_last_llm_token = None
+        self._time_first_synthesis_request = None
+        self._time_first_audio = None
+        self._time_last_audio = None
 
         self._core_time = 0.0
         self._accumulated_audio_seconds = 0.0

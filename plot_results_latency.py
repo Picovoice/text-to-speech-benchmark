@@ -121,7 +121,7 @@ def _plot(
             rounded_result = round_result(mean.time_to_first_token)
             rounded_results.append(rounded_result)
             colors.append(ENGINE_COLORS[synthesizer])
-            bottoms.append(rounded_result)  # okay, same length as rounded_results
+            bottoms.append(rounded_result)
         ax.bar(
             range(num_results),
             rounded_results,

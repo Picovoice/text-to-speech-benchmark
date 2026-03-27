@@ -63,16 +63,18 @@ Orca can handle the raw LLM tokens as soon as they are produced.
 ## Metrics
 
 Our metrics include the following:
-1. First Token To Speech Latency.
-2. Voice Assistant Response Time.
-3. CPU Core Hour Ratio.
-4. Peak Memory (RAM) Usage.
-5. Model Size.
-6. Platform Support.
-7. Language Support.
-8. Audio Sample Quality.
+1. [First Token To Speech Latency](#first-token-to-speech--voice-assistant-response-time)
+2. [Voice Assistant Response Time](#first-token-to-speech--voice-assistant-response-time)
+3. [CPU Core Hour Ratio](#cpu-core-hour-ratio)
+4. [Peak Memory (RAM) Usage](#peak-memory-mem-usage)
+5. [Model Size](#model-size)
+6. Platform Support
+7. Language Support
+8. Audio Sample Quality
 
 For 1~3 above, we use a large language model (LLM) running locally on CPU to simulate the real-world scenario of having LLM + TTS as a voice assistant. Note that for a complete voice assistant application we also need to consider the time it takes for the Speech-to-Text system to send the request. Since we can use real-time Speech-to-Text engines like Picovoice's [Cheetah Streaming Speech-to-Text](https://picovoice.ai/platform/cheetah/), we can assume that the latency introduced by the Speech-to-Text is small compared to the total response time. Head over to our GitHub demo at [LLM Voice Assistant](https://github.com/Picovoice/orca/tree/main/demo/llm_voice_assistant), showcasing a real voice-to-voice conversation with [picoLLM](https://picovoice.ai/picollm/), using different TTS systems.
+
+### First Token To Speech & Voice Assistant Response Time:
 
 Response times are typically measured with the `time-to-first-byte` metric, which is the time taken from the moment a
 request was sent until the first byte is received.
@@ -99,11 +101,17 @@ We believe the `FTTS` metric is the most appropriate way to measure the response
 voice assistants. This is because it gets closest to the behavior of humans, who can start reading a response as
 soon as the first token appears.
 
+### CPU Core Hour Ratio:
+
 We define **CPU Core Hour Ratio** as the amount of CPU Core Hour it takes to generate an hour of speech. This is to ensure a fair comparison between TTS models that use a large number of CPU cores and those that only use 1 or 2 CPU cores. We define "CPU Core Hour" by summing over the number of hours that each CPU core takes to generate the speech.
+
+### Peak Memory (RAM) Usage:
 
 We define **Peak Memory (RAM) Usage** as the peak RAM usage of TTS when generating speech, excluding that of LLM inference and initial Python set-up.
 
-We define **Model Size** as the file size of the binary files needed to run TTS, excluding common Python packages like PyTorch. For example, if a model is to be downloaded from Hugging Face, then we only count the binary files there, which can be `.safetensors`, `.bin`, `.gguf`, `.pt`, `.pth`, `.onnx`, ... If a TTS model requires a G2P such as `misaki` or `espeak-ng`, we additionally count the size of that as well. In fact, this is favoring non-Orca models, because in the real world scenario, those models require a lot more dependencies to do inference.
+### Model Size:
+
+We define **Model Size** as the file size of the binary files needed to run TTS, excluding common Python packages like PyTorch. For example, if a model is to be downloaded from Hugging Face, then we only count the binary files there, which can be `.safetensors`, `.bin`, `.gguf`, `.pt`, `.pth`, `.onnx`, ... If a TTS model requires a G2P such as `misaki` or `espeak-ng`, we additionally count the size of that as well.
 
 ## Usage
 
