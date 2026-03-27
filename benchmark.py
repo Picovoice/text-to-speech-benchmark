@@ -367,7 +367,10 @@ async def _run_benchmark_iteration_for_time_measurement(
     timer.wait_for_first_audio()
 
     if not timer.skip_this_result:
-        core_hour_ratio = timer.core_time / timer.accumulated_audio_seconds
+        if timer.accumulated_audio_seconds == 0.0:
+            core_hour_ratio = 0.0
+        else:
+            core_hour_ratio = timer.core_time / timer.accumulated_audio_seconds
         timing_result = TimingResult(
             voice_assistant_response_time=timer.voice_assistant_response_time(),
             time_to_first_token=timer.time_to_first_token(),
