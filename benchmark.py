@@ -69,7 +69,7 @@ class TimingResult:
     def mean_from_results(cls, results: Sequence['TimingResult']) -> 'TimingResult':
         if len(results) == 0:
             print("WARNING: Cannot compute mean of empty list")
-            return TimingResult(0, 0, 0, 0, 0, 0)
+            return TimingResult(0, 0, 0, 0, 0, 0, 0, 0, 0)
 
         def _mean(values: Sequence[Any]) -> float:
             return sum(values) / len(values)
@@ -80,7 +80,7 @@ class TimingResult:
     def std_from_results(cls, results: Sequence['TimingResult']) -> 'TimingResult':
         if len(results) == 0:
             print("WARNING: Cannot compute standard deviation of empty list")
-            return TimingResult(0, 0, 0, 0, 0, 0)
+            return TimingResult(0, 0, 0, 0, 0, 0, 0, 0, 0)
 
         def _std(values):
             mean = sum(values) / len(values)
@@ -93,7 +93,7 @@ class Stats:
     MAX_LLM_DELAY_SECONDS = 0.6
 
     def __init__(self, tts: Synthesizers, results_folder: Optional[str] = None) -> None:
-        self._results = []
+        self._results = list()
 
         self._tts_type_string = tts.value
 
@@ -104,7 +104,7 @@ class Stats:
             self,
             result: Union[
                 TimingResult,
-                dict[int, float],
+                dict[str, float],
             ],
     ) -> None:
         self._results.append(result)

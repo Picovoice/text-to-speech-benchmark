@@ -111,7 +111,7 @@ def _plot(
     def round_result(value: float) -> float:
         return round(value, -1)
 
-    bottoms = [0 for _ in range(num_results)]
+    bottoms = [0.0 for _ in range(num_results)]
     if not only_tts:
         bottoms = []
         rounded_results = []

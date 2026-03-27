@@ -85,7 +85,7 @@ def _plot(
 
     num_results = len(results)
 
-    max_delay = 0
+    max_delay = 0.0
     for synthesizer, mean, std in results:
         print(
             f"TTS: {synthesizer.value}")

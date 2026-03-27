@@ -70,7 +70,6 @@ class Synthesizer:
         self.text_streamable = text_streamable
 
         self._timer = timer
-        self._audio_sink = None
         self._audio_sink = AudioSink(sample_rate=self.sample_rate, encoding=audio_encoding)
 
     def synthesize(self, text_stream: Generator[str, None, None]) -> None:

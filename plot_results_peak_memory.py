@@ -96,7 +96,7 @@ def _plot(
         return f"{float(coeff):.{precision}f}E{int(exp)}"
 
     for i, val in enumerate(mean_mem):
-        ax.text(i, val * 1.05, scientific_notation(val), ha="center", fontsize=10, color=BLACK)
+        ax.text(i, val * 1.05, scientific_notation(float(val)), ha="center", fontsize=10, color=BLACK)
 
     def log_e_formatter(x, pos):
         if x == 0:
