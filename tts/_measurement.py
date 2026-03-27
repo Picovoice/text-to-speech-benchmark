@@ -2,7 +2,11 @@ import threading
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Optional
+from typing import (
+    Any,
+    Generator,
+    Optional
+)
 
 import psutil
 
@@ -124,20 +128,14 @@ class Timer:
         return self._skip_this_result
 
     @skip_this_result.setter
-    def skip_this_result(
-            self,
-            val: bool,
-    ):
+    def skip_this_result(self, val: bool):
         self._skip_this_result = val
 
     @property
     def accumulated_audio_seconds(self) -> float:
         return self._accumulated_audio_seconds
 
-    def accumulate_audio_seconds(
-            self,
-            audio_seconds: float,
-    ) -> None:
+    def accumulate_audio_seconds(self, audio_seconds: float) -> None:
         self._accumulated_audio_seconds += audio_seconds
 
     @property
@@ -145,10 +143,7 @@ class Timer:
         return self._core_time
 
     @core_time.setter
-    def core_time(
-            self,
-            val: float,
-    ):
+    def core_time(self, val: float):
         self._core_time = val
 
 
@@ -216,9 +211,7 @@ def _memory_tree(proc_main):
 
 
 @contextmanager
-def measure_peak_memory(
-        interval=0.05,
-):
+def measure_peak_memory(interval: float = 0.05)-> Generator[dict[str, int], Any, None]:
     proc_main = psutil.Process()
     peak_mem = 0
     result = {
