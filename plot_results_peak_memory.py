@@ -89,14 +89,27 @@ def _plot(
         alpha=1.0
     )
 
-    def scientific_notation(x: float, precision: int = 2) -> str:
-        coeff, exp = f"{x:.{precision}e}".split("e")
-        if int(exp) == 0:
-            return f"{float(coeff):.{precision}f}"
-        return f"{float(coeff):.{precision}f}E{int(exp)}"
+    def regular_notation(
+            x: float,
+            precision: int = 1,
+            unit: str = "MB",
+    ) -> str:
+        if x == 0:
+            return "0.0"
+        mantissa, exp = f"{x:.{precision}e}".split("e")
+        exp = int(exp)
+        value = float(mantissa) * (10 ** exp)
+        decimals = precision - exp
+
+        if decimals > 0:
+            result = f"{value:.{decimals}f}"
+        else:
+            result = str(int(value))
+
+        return result + unit
 
     for i, val in enumerate(mean_mem):
-        ax.text(i, val * 1.05, scientific_notation(float(val)), ha="center", fontsize=10, color=BLACK)
+        ax.text(i, val * 1.05, regular_notation(float(val)), ha="center", fontsize=10, color=BLACK)
 
     def log_e_formatter(x, pos):
         if x == 0:

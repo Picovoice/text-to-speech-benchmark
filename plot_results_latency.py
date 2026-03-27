@@ -152,12 +152,31 @@ def _plot(
         coeff, exp = f"{x:.{precision}e}".split("e")
         return f"{float(coeff):.{precision}f}E{int(exp)}"
 
+    def regular_notation(
+            x: float,
+            precision: int = 1,
+            unit: str = "ms",
+    ) -> str:
+        if x == 0:
+            return "0.0"
+        mantissa, exp = f"{x:.{precision}e}".split("e")
+        exp = int(exp)
+        value = float(mantissa) * (10 ** exp)
+        decimals = precision - exp
+
+        if decimals > 0:
+            result = f"{value:.{decimals}f}"
+        else:
+            result = str(int(value))
+
+        return result + unit
+
     for i, (synthesizer, mean, std) in enumerate(results):
         mean_total_delay = mean.voice_assistant_response_time if not only_tts else mean.first_token_to_speech
         std_total_delay = std.voice_assistant_response_time if not only_tts else std.first_token_to_speech
         string_above_bar = (
-            f"{scientific_notation(mean_total_delay)}" if not show_error_bars
-            else f"{scientific_notation(mean_total_delay)}±{scientific_notation(std_total_delay)}"
+            f"{regular_notation(mean_total_delay)}" if not show_error_bars
+            else f"{regular_notation(mean_total_delay)}±{regular_notation(std_total_delay)}"
         )
         ax.text(
             i,

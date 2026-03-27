@@ -112,17 +112,24 @@ def _plot(
         label=None,
     )
 
-    def scientific_notation(
+    def regular_notation(
             x: float,
-            precision: int = 2,
+            precision: int = 1,
+            unit: str = "×",
     ) -> str:
-        coeff, exp = f"{x:.{precision}e}".split("e")
-        if int(exp) == 0:
-            result = f"{float(coeff):.{precision}f}"
-        else:
-            result = f"{float(coeff):.{precision}f}E{int(exp)}"
+        if x == 0:
+            return "0.0"
+        mantissa, exp = f"{x:.{precision}e}".split("e")
+        exp = int(exp)
+        value = float(mantissa) * (10 ** exp)
+        decimals = precision - exp
 
-        return result
+        if decimals > 0:
+            result = f"{value:.{decimals}f}"
+        else:
+            result = str(int(value))
+
+        return result + unit
 
     total_delays = []
     total_delays_std = []
@@ -136,7 +143,7 @@ def _plot(
         ax.text(
             i,
             rounded_result * 1.05,
-            scientific_notation(rounded_result),
+            regular_notation(rounded_result),
             ha="center",
             color=BLACK,
             fontsize=10,
