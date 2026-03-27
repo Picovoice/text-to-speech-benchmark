@@ -27,15 +27,15 @@ class Timer:
         self._time_llm_request = self._get_time()
 
     def maybe_log_time_first_llm_token(self) -> None:
-        if self._time_first_llm_token == None:
+        if self._time_first_llm_token is None:
             self._time_first_llm_token = self._get_time()
 
     def maybe_log_time_first_synthesis_request(self) -> None:
-        if self._time_first_synthesis_request == None:
+        if self._time_first_synthesis_request is None:
             self._time_first_synthesis_request = self._get_time()
 
     def maybe_set_time_first_synthesis_request(self, seconds: float) -> None:
-        if self._time_first_synthesis_request == None:
+        if self._time_first_synthesis_request is None:
             self._time_first_synthesis_request = seconds
 
     def log_time_first_synthesis_request(self) -> None:
@@ -45,7 +45,7 @@ class Timer:
         self._time_last_llm_token = self._get_time()
 
     def maybe_log_time_first_audio(self) -> None:
-        if self._time_first_audio == None:
+        if self._time_first_audio is None:
             self._time_first_audio = self._get_time()
 
     def log_time_last_audio(self) -> None:
@@ -97,11 +97,11 @@ class Timer:
             return None
 
     def wait_for_first_audio(self) -> None:
-        while self._time_first_audio == None and not self._skip_this_result:
+        while self._time_first_audio is None and not self._skip_this_result:
             time.sleep(0.01)
 
     def wait_for_last_audio(self) -> None:
-        while self._time_last_audio == None:
+        while self._time_last_audio is None:
             time.sleep(0.01)
 
     def reset(self) -> None:
@@ -150,6 +150,7 @@ class Timer:
     ):
         self._core_time = val
 
+
 class CoreTimeMeasure:
     def __init__(self):
         self._proc_main = psutil.Process()
@@ -190,6 +191,7 @@ class CoreTimeMeasure:
                 pass
         return total
 
+
 @contextmanager
 def include_measurement(*measurements):
     for m in measurements:
@@ -199,6 +201,7 @@ def include_measurement(*measurements):
     finally:
         for m in measurements:
             m.pause()
+
 
 def _memory_tree(proc_main):
     total = 0
@@ -210,6 +213,7 @@ def _memory_tree(proc_main):
             pass
     return total
 
+
 @contextmanager
 def measure_peak_memory(
         interval=0.05,
@@ -217,7 +221,7 @@ def measure_peak_memory(
     proc_main = psutil.Process()
     peak_mem = 0
     result = {
-            "peak_mem": peak_mem,
+        "peak_mem": peak_mem,
     }
     stop_event = threading.Event()
 

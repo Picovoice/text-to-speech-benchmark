@@ -66,7 +66,7 @@ Our metrics include the following:
 1. [First Token To Speech Latency](#first-token-to-speech--voice-assistant-response-time)
 2. [Voice Assistant Response Time](#first-token-to-speech--voice-assistant-response-time)
 3. [CPU Core Hour Ratio](#cpu-core-hour-ratio)
-4. [Peak Memory (RAM) Usage](#peak-memory-mem-usage)
+4. [Peak Memory (RAM) Usage](#peak-memory-ram-usage)
 5. [Model Size](#model-size)
 6. Platform Support
 7. Language Support

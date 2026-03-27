@@ -7,8 +7,6 @@ import subprocess
 import asyncio
 import base64
 import json
-import threading
-import time
 from contextlib import closing
 from dataclasses import dataclass
 from enum import Enum
@@ -23,9 +21,9 @@ from typing import (
 )
 
 from ._measurement import (
-        Timer,
-        CoreTimeMeasure,
-        include_measurement,
+    Timer,
+    CoreTimeMeasure,
+    include_measurement,
 )
 from audio import AudioSink, AudioEncodings
 from openai import OpenAI
@@ -54,6 +52,7 @@ class Synthesizers(Enum):
     SOPRANO_TTS = "soprano_tts"
     SUPERTONIC_TTS_2 = "supertonic_tts_2"
     ESPEAK_NG = "espeak_ng"
+
 
 class Synthesizer:
     def __init__(
@@ -499,7 +498,6 @@ class PicovoiceOrcaSynthesizer(Synthesizer):
             except OrcaActivationLimitError:
                 raise ValueError("Orca activation limit reached.")
 
-
             if pcm is not None:
                 self._timer.maybe_set_time_first_synthesis_request(seconds=time_before_proc)
                 self._timer.maybe_log_time_first_audio()
@@ -558,9 +556,9 @@ class KokoroSynthesizer(Synthesizer):
             **kwargs: Any,
     ) -> None:
         super().__init__(
-                sample_rate=self.SAMPLE_RATE,
-                audio_encoding=self.AUDIO_ENCODING,
-                **kwargs,
+            sample_rate=self.SAMPLE_RATE,
+            audio_encoding=self.AUDIO_ENCODING,
+            **kwargs,
         )
 
         self._save_audio = save_audio
@@ -568,8 +566,8 @@ class KokoroSynthesizer(Synthesizer):
         from kokoro import KPipeline
 
         self._pipeline = KPipeline(
-                lang_code=self.LANGUAGE_CODE,
-                device=self.DEVICE,
+            lang_code=self.LANGUAGE_CODE,
+            device=self.DEVICE,
         )
 
     def synthesize(
@@ -597,9 +595,9 @@ class KokoroSynthesizer(Synthesizer):
                     self._timer.maybe_log_time_first_audio()
 
                     chunk = torch.clamp(
-                            chunk,
-                            -1,
-                            1,
+                        chunk,
+                        -1,
+                        1,
                     ) * INT16_SCALE
                     chunk = chunk.to(torch.int16).numpy()
 
@@ -628,9 +626,9 @@ class ChatterboxTurboSynthesizer(Synthesizer):
             **kwargs: Any,
     ) -> None:
         super().__init__(
-                sample_rate=self.SAMPLE_RATE,
-                audio_encoding=self.AUDIO_ENCODING,
-                **kwargs,
+            sample_rate=self.SAMPLE_RATE,
+            audio_encoding=self.AUDIO_ENCODING,
+            **kwargs,
         )
 
         self._save_audio = save_audio
@@ -656,9 +654,9 @@ class ChatterboxTurboSynthesizer(Synthesizer):
                 wav = self._model.generate(text).squeeze(0)
 
                 wav = torch.clamp(
-                        wav,
-                        -1,
-                        1,
+                    wav,
+                    -1,
+                    1,
                 ) * INT16_SCALE
                 wav = wav.to(torch.int16).numpy()
 
@@ -691,9 +689,9 @@ class KittenSynthesizer(Synthesizer):
             **kwargs: Any,
     ) -> None:
         super().__init__(
-                sample_rate=self.SAMPLE_RATE,
-                audio_encoding=self.AUDIO_ENCODING,
-                **kwargs,
+            sample_rate=self.SAMPLE_RATE,
+            audio_encoding=self.AUDIO_ENCODING,
+            **kwargs,
         )
 
         self._save_audio = save_audio
@@ -722,14 +720,14 @@ class KittenSynthesizer(Synthesizer):
                 self._timer.maybe_log_time_first_synthesis_request()
 
                 audio = self._model.generate(
-                        text,
-                        voice=self.VOICE_ID,
+                    text,
+                    voice=self.VOICE_ID,
                 )
 
                 audio = np.clip(
-                        audio,
-                        -1,
-                        1,
+                    audio,
+                    -1,
+                    1,
                 ) * INT16_SCALE
                 audio = audio.astype(np.int16)
 
@@ -760,9 +758,9 @@ class PocketSynthesizer(Synthesizer):
             **kwargs: Any,
     ) -> None:
         super().__init__(
-                sample_rate=self.SAMPLE_RATE,
-                audio_encoding=self.AUDIO_ENCODING,
-                **kwargs,
+            sample_rate=self.SAMPLE_RATE,
+            audio_encoding=self.AUDIO_ENCODING,
+            **kwargs,
         )
 
         self._save_audio = save_audio
@@ -795,9 +793,9 @@ class PocketSynthesizer(Synthesizer):
                     self._timer.maybe_log_time_first_audio()
 
                     chunk = torch.clamp(
-                            chunk,
-                            -1,
-                            1,
+                        chunk,
+                        -1,
+                        1,
                     ) * INT16_SCALE
                     chunk = chunk.to(torch.int16).numpy()
 
@@ -829,9 +827,9 @@ class NeuTTSNanoSynthesizer(Synthesizer):
             **kwargs: Any,
     ) -> None:
         super().__init__(
-                sample_rate=self.SAMPLE_RATE,
-                audio_encoding=self.AUDIO_ENCODING,
-                **kwargs,
+            sample_rate=self.SAMPLE_RATE,
+            audio_encoding=self.AUDIO_ENCODING,
+            **kwargs,
         )
 
         self._save_audio = save_audio
@@ -873,9 +871,9 @@ class NeuTTSNanoSynthesizer(Synthesizer):
                     self._timer.maybe_log_time_first_audio()
 
                     chunk = np.clip(
-                            chunk,
-                            -1,
-                            1,
+                        chunk,
+                        -1,
+                        1,
                     ) * INT16_SCALE
                     chunk = chunk.astype(np.int16)
 
@@ -904,16 +902,16 @@ class PiperSynthesizer(Synthesizer):
             **kwargs: Any,
     ) -> None:
         super().__init__(
-                sample_rate=self.SAMPLE_RATE,
-                audio_encoding=self.AUDIO_ENCODING,
-                **kwargs,
+            sample_rate=self.SAMPLE_RATE,
+            audio_encoding=self.AUDIO_ENCODING,
+            **kwargs,
         )
 
         self._save_audio = save_audio
 
-        from piper.voice import PiperVoice as piper
+        from piper.voice import PiperVoice as Piper
 
-        self._model = piper.load(model_path)
+        self._model = Piper.load(model_path)
 
     def synthesize(
             self,
@@ -935,9 +933,9 @@ class PiperSynthesizer(Synthesizer):
                     self._timer.maybe_log_time_first_audio()
 
                     chunk = np.clip(
-                            chunk.audio_float_array,
-                            -1,
-                            1,
+                        chunk.audio_float_array,
+                        -1,
+                        1,
                     ) * INT16_SCALE
                     chunk = chunk.astype(np.int16)
 
@@ -967,9 +965,9 @@ class SopranoSynthesizer(Synthesizer):
             **kwargs: Any,
     ) -> None:
         super().__init__(
-                sample_rate=self.SAMPLE_RATE,
-                audio_encoding=self.AUDIO_ENCODING,
-                **kwargs,
+            sample_rate=self.SAMPLE_RATE,
+            audio_encoding=self.AUDIO_ENCODING,
+            **kwargs,
         )
 
         self._save_audio = save_audio
@@ -977,8 +975,8 @@ class SopranoSynthesizer(Synthesizer):
         from soprano import SopranoTTS
 
         self._model = SopranoTTS(
-                backend=self.BACKEND,
-                device=self.DEVICE,
+            backend=self.BACKEND,
+            device=self.DEVICE,
         )
 
     def synthesize(
@@ -996,7 +994,7 @@ class SopranoSynthesizer(Synthesizer):
                 self._timer.maybe_log_time_first_synthesis_request()
 
                 stream = self._model.infer_stream(
-                        text,
+                    text,
                 )
 
                 for chunk in stream:
@@ -1009,9 +1007,9 @@ class SopranoSynthesizer(Synthesizer):
                         chunk = chunk[0]
 
                     chunk = torch.clamp(
-                            chunk,
-                            -1,
-                            1,
+                        chunk,
+                        -1,
+                        1,
                     ) * INT16_SCALE
 
                     chunk = chunk.to(torch.int16).numpy()
@@ -1047,9 +1045,9 @@ class Supertonic2Synthesizer(Synthesizer):
             **kwargs: Any,
     ) -> None:
         super().__init__(
-                sample_rate=self.SAMPLE_RATE,
-                audio_encoding=self.AUDIO_ENCODING,
-                **kwargs,
+            sample_rate=self.SAMPLE_RATE,
+            audio_encoding=self.AUDIO_ENCODING,
+            **kwargs,
         )
 
         self._save_audio = save_audio
@@ -1059,12 +1057,12 @@ class Supertonic2Synthesizer(Synthesizer):
         from py.helper import load_text_to_speech, load_voice_style
 
         self._text_to_speech = load_text_to_speech(
-                onnx_dir,
-                self.USE_GPU,
+            onnx_dir,
+            self.USE_GPU,
         )
         self._style = load_voice_style(
-                [voice_style_path],
-                verbose=True,
+            [voice_style_path],
+            verbose=True,
         )
 
     def synthesize(
@@ -1090,9 +1088,9 @@ class Supertonic2Synthesizer(Synthesizer):
                 )
 
                 wav = np.clip(
-                        wav,
-                        -1,
-                        1,
+                    wav,
+                    -1,
+                    1,
                 ) * INT16_SCALE
                 wav = wav.astype(np.int16)
                 wav = np.squeeze(
@@ -1127,9 +1125,9 @@ class EspeakNGSynthesizer(Synthesizer):
             **kwargs: Any,
     ) -> None:
         super().__init__(
-                sample_rate=self.SAMPLE_RATE,
-                audio_encoding=self.AUDIO_ENCODING,
-                **kwargs,
+            sample_rate=self.SAMPLE_RATE,
+            audio_encoding=self.AUDIO_ENCODING,
+            **kwargs,
         )
 
         self._save_audio = save_audio

@@ -101,11 +101,6 @@ def _plot(
 
     num_results = len(results)
 
-    max_delay = max(
-        (mean.voice_assistant_response_time if not only_tts else mean.first_token_to_speech)
-        for _, mean, _ in results
-    )
-
     fig, ax = plt.subplots(figsize=(12, 6))
     ax.set_yscale("log", base=10)
 
@@ -156,10 +151,14 @@ def _plot(
     for i, (synthesizer, mean, std) in enumerate(results):
         mean_total_delay = mean.voice_assistant_response_time if not only_tts else mean.first_token_to_speech
         std_total_delay = std.voice_assistant_response_time if not only_tts else std.first_token_to_speech
+        string_above_bar = (
+            f"{scientific_notation(mean_total_delay)}" if not show_error_bars
+            else f"{scientific_notation(mean_total_delay)}±{scientific_notation(std_total_delay)}"
+        )
         ax.text(
             i,
             mean_total_delay * 1.05,
-            f"{scientific_notation(mean_total_delay)}" if not show_error_bars else f"{scientific_notation(mean_total_delay)}±{scientific_notation(std_total_delay)}",
+            string_above_bar,
             ha="center",
             color=BLACK,
             fontsize=10,

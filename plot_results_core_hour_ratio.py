@@ -34,27 +34,27 @@ COLOR_SOPRANO_TTS = rgb_from_hex("#151515")
 COLOR_SUPERTONIC_TTS_2 = rgb_from_hex("#707070")
 
 ENGINE_PRINT_NAMES = {
-        Synthesizers.PICOVOICE_ORCA: 'Picovoice\nOrca',
-        Synthesizers.KOKORO_TTS: "Kokoro\nTTS",
-        Synthesizers.CHATTERBOX_TTS_TURBO: "Chatterbox\nTTS\nTurbo",
-        Synthesizers.KITTEN_TTS: "Kitten\nTTS Nano\n0.8 INT8",
-        Synthesizers.POCKET_TTS: "Pocket\nTTS",
-        Synthesizers.NEU_TTS_NANO_Q4_GGUF: "Neu TTS\nNano\nQ4 GGUF",
-        Synthesizers.PIPER_TTS: "Piper\nTTS",
-        Synthesizers.SOPRANO_TTS: "Soprano\nTTS",
-        Synthesizers.SUPERTONIC_TTS_2: "Supertonic\nTTS 2",
+    Synthesizers.PICOVOICE_ORCA: 'Picovoice\nOrca',
+    Synthesizers.KOKORO_TTS: "Kokoro\nTTS",
+    Synthesizers.CHATTERBOX_TTS_TURBO: "Chatterbox\nTTS\nTurbo",
+    Synthesizers.KITTEN_TTS: "Kitten\nTTS Nano\n0.8 INT8",
+    Synthesizers.POCKET_TTS: "Pocket\nTTS",
+    Synthesizers.NEU_TTS_NANO_Q4_GGUF: "Neu TTS\nNano\nQ4 GGUF",
+    Synthesizers.PIPER_TTS: "Piper\nTTS",
+    Synthesizers.SOPRANO_TTS: "Soprano\nTTS",
+    Synthesizers.SUPERTONIC_TTS_2: "Supertonic\nTTS 2",
 }
 
 ENGINE_COLORS = {
-        Synthesizers.PICOVOICE_ORCA: BLUE,
-        Synthesizers.KOKORO_TTS: COLOR_KOKORO_TTS,
-        Synthesizers.CHATTERBOX_TTS_TURBO: COLOR_CHATTERBOX_TTS_TURBO,
-        Synthesizers.KITTEN_TTS: COLOR_KITTEN_TTS,
-        Synthesizers.POCKET_TTS: COLOR_POCKET_TTS,
-        Synthesizers.NEU_TTS_NANO_Q4_GGUF: COLOR_NEU_TTS_NANO_Q4_GGUF,
-        Synthesizers.PIPER_TTS: COLOR_PIPER_TTS,
-        Synthesizers.SOPRANO_TTS: COLOR_SOPRANO_TTS,
-        Synthesizers.SUPERTONIC_TTS_2: COLOR_SUPERTONIC_TTS_2,
+    Synthesizers.PICOVOICE_ORCA: BLUE,
+    Synthesizers.KOKORO_TTS: COLOR_KOKORO_TTS,
+    Synthesizers.CHATTERBOX_TTS_TURBO: COLOR_CHATTERBOX_TTS_TURBO,
+    Synthesizers.KITTEN_TTS: COLOR_KITTEN_TTS,
+    Synthesizers.POCKET_TTS: COLOR_POCKET_TTS,
+    Synthesizers.NEU_TTS_NANO_Q4_GGUF: COLOR_NEU_TTS_NANO_Q4_GGUF,
+    Synthesizers.PIPER_TTS: COLOR_PIPER_TTS,
+    Synthesizers.SOPRANO_TTS: COLOR_SOPRANO_TTS,
+    Synthesizers.SUPERTONIC_TTS_2: COLOR_SUPERTONIC_TTS_2,
 }
 
 
@@ -102,13 +102,13 @@ def _plot(
         rounded_results.append(mean.core_hour_ratio)
         colors.append(ENGINE_COLORS[synthesizer])
     ax.bar(
-            range(num_results),
-            rounded_results,
-            0.5,
-            color=colors,
-            bottom=bottoms,
-            alpha=1.0,
-            label=None,
+        range(num_results),
+        rounded_results,
+        0.5,
+        color=colors,
+        bottom=bottoms,
+        alpha=1.0,
+        label=None,
     )
 
     def scientific_notation(
@@ -129,17 +129,16 @@ def _plot(
         mean_total_delay = mean.core_hour_ratio
         std_total_delay = std.core_hour_ratio
         rounded_result = mean_total_delay
-        rounded_std = std_total_delay
         total_delays.append(rounded_result)
         std_total_delay = std.core_hour_ratio
         total_delays_std.append(std_total_delay)
         ax.text(
-                i,
-                rounded_result * 1.05,
-                scientific_notation(rounded_result),
-                ha="center",
-                color=BLACK,
-                fontsize=10,
+            i,
+            rounded_result * 1.05,
+            scientific_notation(rounded_result),
+            ha="center",
+            color=BLACK,
+            fontsize=10,
         )
 
     for spine in plt.gca().spines.values():
@@ -149,12 +148,12 @@ def _plot(
     y_max = max_delay + (max_delay / 6)
     plt.ylim(0, y_max)
     plt.xticks(
-            np.arange(
-                0,
-                len(rounded_results),
-            ),
-            [ENGINE_PRINT_NAMES[x[0]] for x in results],
-            fontsize=10,
+        np.arange(
+            0,
+            len(rounded_results),
+        ),
+        [ENGINE_PRINT_NAMES[x[0]] for x in results],
+        fontsize=10,
     )
     ax.yaxis.set_major_locator(ticker.LogLocator(base=10))
 
@@ -185,8 +184,8 @@ def main() -> None:
     args = parser.parse_args()
 
     output_path = os.path.join(
-            DEFAULT_PLOTS_FOLDER,
-            "core_hour_ratio.png",
+        DEFAULT_PLOTS_FOLDER,
+        "core_hour_ratio.png",
     )
     _plot(
         results_folder=args.results_folder,

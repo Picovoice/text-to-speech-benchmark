@@ -29,7 +29,7 @@ DEFAULT_RESULTS_FOLDER = os.path.join(os.path.dirname(__file__), "results", "dat
 DEFAULT_DATASET = TextDatasets.TASKMASTER2
 
 TEST_MEMORY_SENTENCE = \
-        "A fox wandered through the forest at sunrise, wondering why birds seemed to know a secret it didn’t."
+    "A fox wandered through the forest at sunrise, wondering why birds seemed to know a secret it didn’t."
 
 
 @dataclass
@@ -123,8 +123,8 @@ class Stats:
             result = result[0]
 
             result_json_path = os.path.join(
-                    self._output_folder,
-                    f"results_tts_{self._tts_type_string}.json",
+                self._output_folder,
+                f"results_tts_{self._tts_type_string}.json",
             )
 
             with open(result_json_path, "r") as file:
@@ -156,7 +156,10 @@ class Stats:
             print(f"Mean tokens per second: {mean.num_tokens_per_second:.2f} +- {std.num_tokens_per_second:.2f}")
 
             print(f"Core time: {mean.core_time:.2f} +- {std.core_time:.2f}")
-            print(f"Accumulated audio seconds: {mean.accumulated_audio_seconds:.2f} +- {std.accumulated_audio_seconds:.2f}")
+            print(
+                f"Accumulated audio seconds: {mean.accumulated_audio_seconds:.2f} +- "
+                f"{std.accumulated_audio_seconds:.2f}"
+            )
             print(f"Core hour ratio: {mean.core_hour_ratio:.2f} +- {std.core_hour_ratio:.2f}")
 
             fig, axs = plt.subplots(3, 2, figsize=(14, 8))
@@ -180,7 +183,6 @@ class Stats:
             axs[2, 1].set_title('accumulated_audio_seconds')
             axs[2, 1].hist([r.core_hour_ratio for r in self._results], bins=10)
             axs[2, 1].set_title('core_hour_ratio')
-
 
             output_path = os.path.join(self._output_folder, f"hists_tts_{self._tts_type_string}.png")
             plt.savefig(output_path)
@@ -226,26 +228,26 @@ class Stats:
             results_dict = json.load(f)
 
         mean = TimingResult(
-                voice_assistant_response_time=results_dict["mean_voice_assistant_response_time"] * scale,
-                time_to_first_token=results_dict["mean_time_to_first_token"] * scale,
-                first_token_to_speech=results_dict["mean_first_token_to_speech"] * scale,
-                tts_process_seconds=results_dict["mean_tts_process_seconds"] * scale,
-                num_words=results_dict["mean_num_words"] * scale,
-                num_tokens_per_second=results_dict["mean_num_tokens_per_second"] * scale,
-                core_time=results_dict.get("mean_core_time", 0.0),
-                accumulated_audio_seconds=results_dict.get("mean_accumulated_audio_seconds", 0.0),
-                core_hour_ratio=results_dict.get("mean_core_hour_ratio", 0.0),
+            voice_assistant_response_time=results_dict["mean_voice_assistant_response_time"] * scale,
+            time_to_first_token=results_dict["mean_time_to_first_token"] * scale,
+            first_token_to_speech=results_dict["mean_first_token_to_speech"] * scale,
+            tts_process_seconds=results_dict["mean_tts_process_seconds"] * scale,
+            num_words=results_dict["mean_num_words"] * scale,
+            num_tokens_per_second=results_dict["mean_num_tokens_per_second"] * scale,
+            core_time=results_dict.get("mean_core_time", 0.0),
+            accumulated_audio_seconds=results_dict.get("mean_accumulated_audio_seconds", 0.0),
+            core_hour_ratio=results_dict.get("mean_core_hour_ratio", 0.0),
         )
         std = TimingResult(
-                voice_assistant_response_time=results_dict["std_voice_assistant_response_time"] * scale,
-                time_to_first_token=results_dict["std_time_to_first_token"] * scale,
-                first_token_to_speech=results_dict["std_first_token_to_speech"] * scale,
-                tts_process_seconds=results_dict["std_tts_process_seconds"] * scale,
-                num_words=results_dict["std_num_words"] * scale,
-                num_tokens_per_second=results_dict["std_num_tokens_per_second"] * scale,
-                core_time=results_dict.get("std_core_time", 0.0),
-                accumulated_audio_seconds=results_dict.get("std_accumulated_audio_seconds", 0.0),
-                core_hour_ratio=results_dict.get("std_core_hour_ratio", 0.0),
+            voice_assistant_response_time=results_dict["std_voice_assistant_response_time"] * scale,
+            time_to_first_token=results_dict["std_time_to_first_token"] * scale,
+            first_token_to_speech=results_dict["std_first_token_to_speech"] * scale,
+            tts_process_seconds=results_dict["std_tts_process_seconds"] * scale,
+            num_words=results_dict["std_num_words"] * scale,
+            num_tokens_per_second=results_dict["std_num_tokens_per_second"] * scale,
+            core_time=results_dict.get("std_core_time", 0.0),
+            accumulated_audio_seconds=results_dict.get("std_accumulated_audio_seconds", 0.0),
+            core_hour_ratio=results_dict.get("std_core_hour_ratio", 0.0),
         )
 
         return Synthesizers(tts_type_string), mean, std
@@ -303,35 +305,35 @@ def get_synthesizer_init_kwargs(args: argparse.Namespace) -> Dict[str, str]:
     elif synthesizer_type is Synthesizers.OPENAI_TTS:
         if args.openai_api_key is None:
             raise ValueError(
-                f"An OpenAI access key is required when using OpenAI models. Specify with `--openai-api-key`.")
+                "An OpenAI access key is required when using OpenAI models. Specify with `--openai-api-key`.")
         kwargs["api_key"] = args.openai_api_key
 
     elif synthesizer_type is Synthesizers.NEU_TTS_NANO_Q4_GGUF:
         if args.neutts_ref_text_path is None:
             raise ValueError(
-                    f"Neu-TTS Nano Q4 GGUF requires the path to reference text. Specify with `--neutts-ref-text-path`.")
+                "Neu-TTS Nano Q4 GGUF requires the path to reference text. Specify with `--neutts-ref-text-path`.")
         kwargs["ref_text_path"] = args.neutts_ref_text_path
         if args.neutts_ref_codes_path is None:
             raise ValueError(
-                    f"Neu-TTS Nano Q4 GGUF requires the path to reference codes. Specify with `--neutts-ref-codes-path`.")
+                "Neu-TTS Nano Q4 GGUF requires the path to reference codes. Specify with `--neutts-ref-codes-path`.")
         kwargs["ref_codes_path"] = args.neutts_ref_codes_path
     elif synthesizer_type is Synthesizers.PIPER_TTS:
         if args.pipertts_model_path is None:
             raise ValueError(
-                    f"Piper-TTS requires the model path. Specify with `--pipertts-model-path`.")
+                "Piper-TTS requires the model path. Specify with `--pipertts-model-path`.")
         kwargs["model_path"] = args.pipertts_model_path
     elif synthesizer_type is Synthesizers.SUPERTONIC_TTS_2:
         if args.supertonictts_repo_dir is None:
             raise ValueError(
-                    f"Supertonic-TTS-2 requires the path to repo directory. Specify with `--supertonictts-repo-dir`.")
+                "Supertonic-TTS-2 requires the path to repo directory. Specify with `--supertonictts-repo-dir`.")
         kwargs["repo_dir"] = args.supertonictts_repo_dir
         if args.supertonictts_onnx_dir is None:
             raise ValueError(
-                    f"Supertonic-TTS-2 requires the path to onnx directory. Specify with `--supertonictts-onnx-dir`.")
+                "Supertonic-TTS-2 requires the path to onnx directory. Specify with `--supertonictts-onnx-dir`.")
         kwargs["onnx_dir"] = args.supertonictts_onnx_dir
         if args.supertonictts_voice_style_path is None:
             raise ValueError(
-                    f"Supertonic-TTS-2 requires the path to voice style. Specify with `--supertonictts-voice-style-path`.")
+                "Supertonic-TTS-2 requires the path to voice style. Specify with `--supertonictts-voice-style-path`.")
         kwargs["voice_style_path"] = args.supertonictts_voice_style_path
 
     return kwargs
@@ -361,15 +363,15 @@ async def _run_benchmark_iteration_for_time_measurement(
     if not timer.skip_this_result:
         core_hour_ratio = timer.core_time / timer.accumulated_audio_seconds
         timing_result = TimingResult(
-                voice_assistant_response_time=timer.voice_assistant_response_time(),
-                time_to_first_token=timer.time_to_first_token(),
-                first_token_to_speech=timer.first_token_to_speech(),
-                tts_process_seconds=timer.tts_process_seconds(),
-                num_words=len(llm.last_response.split()),
-                num_tokens_per_second=timer.num_tokens_per_second(),
-                core_time=timer.core_time,
-                accumulated_audio_seconds=timer.accumulated_audio_seconds,
-                core_hour_ratio=core_hour_ratio,
+            voice_assistant_response_time=timer.voice_assistant_response_time(),
+            time_to_first_token=timer.time_to_first_token(),
+            first_token_to_speech=timer.first_token_to_speech(),
+            tts_process_seconds=timer.tts_process_seconds(),
+            num_words=len(llm.last_response.split()),
+            num_tokens_per_second=timer.num_tokens_per_second(),
+            core_time=timer.core_time,
+            accumulated_audio_seconds=timer.accumulated_audio_seconds,
+            core_hour_ratio=core_hour_ratio,
         )
         stats.accumulate(result=timing_result)
 
@@ -398,10 +400,10 @@ async def _run_benchmark_iteration_for_memory_measurement(
     with measure_peak_memory() as peak_memory_result:
         synthesizer_init_kwargs = get_synthesizer_init_kwargs(args)
         synthesizer = Synthesizer.create(
-                Synthesizers(args.synthesizer),
-                timer=timer,
-                save_audio=False,
-                **synthesizer_init_kwargs,
+            Synthesizers(args.synthesizer),
+            timer=timer,
+            save_audio=False,
+            **synthesizer_init_kwargs,
         )
 
         def trivial_generator():
@@ -416,12 +418,11 @@ async def _run_benchmark_iteration_for_memory_measurement(
     timer.wait_for_first_audio()
 
     if not timer.skip_this_result:
-        memory_result = {
-                str(timer.num_tokens): peak_memory_result["peak_mem"],
-        }
+        memory_result = {str(timer.num_tokens): peak_memory_result["peak_mem"]}
         stats.accumulate(result=memory_result)
 
     synthesizer.terminate()
+
 
 async def main(args: argparse.Namespace) -> None:
     test_memory_size_multiple = args.test_memory_size_multiple
@@ -434,15 +435,13 @@ async def main(args: argparse.Namespace) -> None:
         stats = Stats(tts=tts_type, results_folder=results_folder)
 
         await _run_benchmark_iteration_for_memory_measurement(
-                sentence=TEST_MEMORY_SENTENCE * test_memory_size_multiple,
-                timer=timer,
-                stats=stats,
-                args=args,
+            sentence=TEST_MEMORY_SENTENCE * test_memory_size_multiple,
+            timer=timer,
+            stats=stats,
+            args=args,
         )
 
-        stats.save_results(
-                save_only_memory_result=True,
-        )
+        stats.save_results(save_only_memory_result=True)
     else:
         num_interactions = args.num_interactions
         results_folder = args.results_folder
@@ -482,9 +481,7 @@ async def main(args: argparse.Namespace) -> None:
                 counter=counter)
             counter += 1
 
-        stats.save_results(
-                save_only_memory_result=False,
-        )
+        stats.save_results(save_only_memory_result=False)
 
         synthesizer.terminate()
 
@@ -548,39 +545,39 @@ if __name__ == "__main__":
         help="Elevenlabs API key")
 
     parser.add_argument(
-            "--neutts-ref-text-path",
-            default=None,
-            help="Neu-TTS Nano Q4 GGUF path to reference text.",
+        "--neutts-ref-text-path",
+        default=None,
+        help="Neu-TTS Nano Q4 GGUF path to reference text.",
     )
 
     parser.add_argument(
-            "--neutts-ref-codes-path",
-            default=None,
-            help="Neu-TTS Nano Q4 GGUF path to reference codes.",
+        "--neutts-ref-codes-path",
+        default=None,
+        help="Neu-TTS Nano Q4 GGUF path to reference codes.",
     )
 
     parser.add_argument(
-            "--pipertts-model-path",
-            default=None,
-            help="Piper-TTS model path.",
+        "--pipertts-model-path",
+        default=None,
+        help="Piper-TTS model path.",
     )
 
     parser.add_argument(
-            "--supertonictts-repo-dir",
-            default=None,
-            help="Supertonic-TTS-2 path to repo directory.",
+        "--supertonictts-repo-dir",
+        default=None,
+        help="Supertonic-TTS-2 path to repo directory.",
     )
 
     parser.add_argument(
-            "--supertonictts-onnx-dir",
-            default=None,
-            help="Supertonic-TTS-2 path to ONNX directory.",
+        "--supertonictts-onnx-dir",
+        default=None,
+        help="Supertonic-TTS-2 path to ONNX directory.",
     )
 
     parser.add_argument(
-            "--supertonictts-voice-style-path",
-            default=None,
-            help="Supertonic-TTS-2 path to voice style.",
+        "--supertonictts-voice-style-path",
+        default=None,
+        help="Supertonic-TTS-2 path to voice style.",
     )
 
     parser.add_argument(

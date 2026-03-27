@@ -31,27 +31,27 @@ COLOR_SOPRANO_TTS = rgb_from_hex("#151515")
 COLOR_SUPERTONIC_TTS_2 = rgb_from_hex("#707070")
 
 ENGINE_PRINT_NAMES = {
-        Synthesizers.PICOVOICE_ORCA: 'Picovoice\nOrca',
-        Synthesizers.KOKORO_TTS: "Kokoro\nTTS",
-        Synthesizers.CHATTERBOX_TTS_TURBO: "Chatterbox\nTTS\nTurbo",
-        Synthesizers.KITTEN_TTS: "Kitten\nTTS Nano\n0.8 INT8",
-        Synthesizers.POCKET_TTS: "Pocket\nTTS",
-        Synthesizers.NEU_TTS_NANO_Q4_GGUF: "Neu TTS\nNano\nQ4 GGUF",
-        Synthesizers.PIPER_TTS: "Piper\nTTS",
-        Synthesizers.SOPRANO_TTS: "Soprano\nTTS",
-        Synthesizers.SUPERTONIC_TTS_2: "Supertonic\nTTS 2",
+    Synthesizers.PICOVOICE_ORCA: 'Picovoice\nOrca',
+    Synthesizers.KOKORO_TTS: "Kokoro\nTTS",
+    Synthesizers.CHATTERBOX_TTS_TURBO: "Chatterbox\nTTS\nTurbo",
+    Synthesizers.KITTEN_TTS: "Kitten\nTTS Nano\n0.8 INT8",
+    Synthesizers.POCKET_TTS: "Pocket\nTTS",
+    Synthesizers.NEU_TTS_NANO_Q4_GGUF: "Neu TTS\nNano\nQ4 GGUF",
+    Synthesizers.PIPER_TTS: "Piper\nTTS",
+    Synthesizers.SOPRANO_TTS: "Soprano\nTTS",
+    Synthesizers.SUPERTONIC_TTS_2: "Supertonic\nTTS 2",
 }
 
 ENGINE_COLORS = {
-        Synthesizers.PICOVOICE_ORCA: BLUE,
-        Synthesizers.KOKORO_TTS: COLOR_KOKORO_TTS,
-        Synthesizers.CHATTERBOX_TTS_TURBO: COLOR_CHATTERBOX_TTS_TURBO,
-        Synthesizers.KITTEN_TTS: COLOR_KITTEN_TTS,
-        Synthesizers.POCKET_TTS: COLOR_POCKET_TTS,
-        Synthesizers.NEU_TTS_NANO_Q4_GGUF: COLOR_NEU_TTS_NANO_Q4_GGUF,
-        Synthesizers.PIPER_TTS: COLOR_PIPER_TTS,
-        Synthesizers.SOPRANO_TTS: COLOR_SOPRANO_TTS,
-        Synthesizers.SUPERTONIC_TTS_2: COLOR_SUPERTONIC_TTS_2,
+    Synthesizers.PICOVOICE_ORCA: BLUE,
+    Synthesizers.KOKORO_TTS: COLOR_KOKORO_TTS,
+    Synthesizers.CHATTERBOX_TTS_TURBO: COLOR_CHATTERBOX_TTS_TURBO,
+    Synthesizers.KITTEN_TTS: COLOR_KITTEN_TTS,
+    Synthesizers.POCKET_TTS: COLOR_POCKET_TTS,
+    Synthesizers.NEU_TTS_NANO_Q4_GGUF: COLOR_NEU_TTS_NANO_Q4_GGUF,
+    Synthesizers.PIPER_TTS: COLOR_PIPER_TTS,
+    Synthesizers.SOPRANO_TTS: COLOR_SOPRANO_TTS,
+    Synthesizers.SUPERTONIC_TTS_2: COLOR_SUPERTONIC_TTS_2,
 }
 
 MODELS = list(ENGINE_PRINT_NAMES.keys())
@@ -119,22 +119,23 @@ def _plot(
     print(f"Saved bar plot to {output_path}")
     plt.close()
 
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-            "--results-folder",
-            default=DEFAULT_RESULTS_FOLDER,
-            help="Path to results folder",
+        "--results-folder",
+        default=DEFAULT_RESULTS_FOLDER,
+        help="Path to results folder",
     )
     args = parser.parse_args()
 
     output_path = os.path.join(
-            DEFAULT_PLOTS_FOLDER,
-            "peak_memory.png",
+        DEFAULT_PLOTS_FOLDER,
+        "peak_memory.png",
     )
     _plot(
-            results_folder=args.results_folder,
-            output_path=output_path,
+        results_folder=args.results_folder,
+        output_path=output_path,
     )
 
 
