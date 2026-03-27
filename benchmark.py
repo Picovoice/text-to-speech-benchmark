@@ -1,5 +1,8 @@
+import argparse
+import asyncio
+import json
+import os
 from dataclasses import dataclass
-from tqdm import tqdm
 from typing import (
     Any,
     Callable,
@@ -7,23 +10,26 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
-    Union,
+    Union
 )
-import argparse
-import asyncio
-import json
+
 import matplotlib.pyplot as plt
-import os
+from tqdm import tqdm
 
-from data import TextDatasets, TextDataset
-from llm import LLMs, LLM
-from tts import (
-    Synthesizers,
-    Synthesizer,
-    Timer,
-    measure_peak_memory,
+from data import (
+    TextDataset,
+    TextDatasets
 )
-
+from llm import (
+    LLM,
+    LLMs
+)
+from tts import (
+    Synthesizer,
+    Synthesizers,
+    Timer,
+    measure_peak_memory
+)
 
 DEFAULT_RESULTS_FOLDER = os.path.join(os.path.dirname(__file__), "results", "data")
 DEFAULT_DATASET = TextDatasets.TASKMASTER2

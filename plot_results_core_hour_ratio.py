@@ -1,10 +1,11 @@
-from matplotlib.ticker import FuncFormatter
-from typing import Tuple
 import argparse
+import os
+from typing import Tuple
+
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
-import os
+from matplotlib.ticker import FuncFormatter
 
 from benchmark import (
     DEFAULT_RESULTS_FOLDER,

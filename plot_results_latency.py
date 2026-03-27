@@ -1,13 +1,17 @@
-from matplotlib.ticker import FuncFormatter, LogLocator
-from typing import Tuple
 import argparse
+import os
+from typing import Tuple
+
 import matplotlib.pyplot as plt
 import numpy as np
-import os
+from matplotlib.ticker import (
+    FuncFormatter,
+    LogLocator
+)
 
 from benchmark import (
     DEFAULT_RESULTS_FOLDER,
-    Stats,
+    Stats
 )
 from tts import Synthesizers
 

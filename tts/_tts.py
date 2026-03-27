@@ -1,37 +1,41 @@
-import time
-import threading
-import numpy as np
-import torch
-import os
-import subprocess
 import asyncio
 import base64
 import json
+import os
+import subprocess
+import threading
+import time
 from contextlib import closing
 from dataclasses import dataclass
 from enum import Enum
 from queue import Queue
 from typing import (
     Any,
+    AsyncGenerator,
     Dict,
     Generator,
-    AsyncGenerator,
     Literal,
-    Optional,
+    Optional
+)
+
+import numpy as np
+import pvorca
+import requests
+import torch
+import websockets
+from openai import OpenAI
+from pvorca import OrcaActivationLimitError
+
+from audio import (
+    AudioEncodings,
+    AudioSink
 )
 
 from ._measurement import (
-    Timer,
     CoreTimeMeasure,
-    include_measurement,
+    Timer,
+    include_measurement
 )
-from audio import AudioSink, AudioEncodings
-from openai import OpenAI
-from pvorca import OrcaActivationLimitError
-import pvorca
-import requests
-import websockets
-
 
 INT16_SCALE = 32767
 
@@ -1054,7 +1058,10 @@ class Supertonic2Synthesizer(Synthesizer):
 
         import sys
         sys.path.append(repo_dir)
-        from py.helper import load_text_to_speech, load_voice_style
+        from py.helper import (
+            load_text_to_speech,
+            load_voice_style
+        )
 
         self._text_to_speech = load_text_to_speech(
             onnx_dir,
