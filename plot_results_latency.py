@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.ticker import (
     FuncFormatter,
-    LogLocator
+    LogLocator,
+    MaxNLocator
 )
 
 from benchmark import (
@@ -17,6 +18,7 @@ from tts import Synthesizers
 
 Color = Tuple[float, float, float]
 DEFAULT_PLOTS_FOLDER = os.path.join(os.path.dirname(__file__), "results/plots")
+CAP_VAL = 4000
 
 
 def rgb_from_hex(x: str) -> Color:
@@ -106,10 +108,15 @@ def _plot(
     num_results = len(results)
 
     fig, ax = plt.subplots(figsize=(12, 6))
-    ax.set_yscale("log", base=10)
+    ax.set_yscale("linear")
 
     def round_result(value: float) -> float:
         return round(value, -1)
+
+    def cap_value(x: float) -> Tuple[float, bool]:
+        if x > CAP_VAL:
+            return CAP_VAL, True
+        return x, False
 
     bottoms = [0.0 for _ in range(num_results)]
     if not only_tts:
@@ -117,10 +124,11 @@ def _plot(
         rounded_results = []
         colors = []
         for synthesizer, mean, std in results:
-            rounded_result = round_result(mean.time_to_first_token)
-            rounded_results.append(rounded_result)
+            raw_val = round_result(mean.time_to_first_token)
+            capped_val, is_capped = cap_value(raw_val)
+            rounded_results.append(capped_val)
             colors.append(ENGINE_COLORS[synthesizer])
-            bottoms.append(rounded_result)
+            bottoms.append(capped_val)
         ax.bar(
             range(num_results),
             rounded_results,
@@ -171,20 +179,31 @@ def _plot(
 
         return result + unit
 
+    has_anomaly = False
+
     for i, (synthesizer, mean, std) in enumerate(results):
-        mean_total_delay = mean.voice_assistant_response_time if not only_tts else mean.first_token_to_speech
+        mean_total_delay_true = mean.voice_assistant_response_time if not only_tts else mean.first_token_to_speech
         std_total_delay = std.voice_assistant_response_time if not only_tts else std.first_token_to_speech
+
+        mean_total_delay_capped, is_capped = cap_value(mean_total_delay_true)
+
+        if is_capped:
+            label = f"*{regular_notation(mean_total_delay_true)}"
+            has_anomaly = True
+        else:
+            label = f"{regular_notation(mean_total_delay_true)}"
+
         string_above_bar = (
-            f"{regular_notation(mean_total_delay)}" if not show_error_bars
-            else f"{regular_notation(mean_total_delay)}±{regular_notation(std_total_delay)}"
+            f"{label}" if not show_error_bars
+            else f"{label}±{regular_notation(std_total_delay)}"
         )
         ax.text(
             i,
-            mean_total_delay * 1.05,
+            mean_total_delay_capped + 40,
             string_above_bar,
             ha="center",
             color=BLACK,
-            fontsize=10,
+            fontsize=8,
         )
 
     if show_error_bars:
@@ -214,13 +233,25 @@ def _plot(
     plt.xticks(
         np.arange(num_results),
         [ENGINE_PRINT_NAMES[x[0]] for x in results],
-        fontsize=8,
+        fontsize=7,
     )
-    ax.yaxis.set_major_locator(LogLocator(base=10))
-    ax.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: scientific_notation(x, 0)))
+    ax.yaxis.set_major_locator(MaxNLocator(nbins=8))
+    ax.yaxis.set_major_formatter(
+        FuncFormatter(lambda x, _: str(int(x)) + "ms")
+    )
+    ax.set_ylim(0, CAP_VAL)
 
     metric = "Voice Assistant Response Time" if not only_tts else "First Token to Speech"
-    plt.ylabel(f"{metric} (ms)", fontsize=14)
+    plt.suptitle(f"{metric}", fontsize=20, x=0.51, y=0.96)
+
+    if has_anomaly:
+        plt.figtext(
+            0.99, 0.91,
+            "* Values are capped at 4000 ms for readability.\n  The actual values are shown above the bars.",
+            ha="right",
+            fontsize=9,
+            color=BLACK,
+        )
 
     if (not only_tts or show_error_bars) and not no_breakdown:
         ax.legend(loc="upper left", fontsize=12, framealpha=0)

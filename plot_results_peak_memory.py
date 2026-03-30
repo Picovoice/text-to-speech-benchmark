@@ -111,18 +111,17 @@ def _plot(
     for i, val in enumerate(mean_mem):
         ax.text(i, val * 1.05, regular_notation(float(val)), ha="center", fontsize=10, color=BLACK)
 
-    def log_e_formatter(x, pos):
-        if x == 0:
-            return "0"
-        exp = int(np.floor(np.log10(x)))
-        return f"1E{exp}"
+    def y_axis_formatter(x, pos):
+        return f"{x:.0f}MB"
 
     ax.set_xticks(range(len(MODELS)))
     ax.set_xticklabels([ENGINE_PRINT_NAMES[m] for m in MODELS], fontsize=10)
     ax.set_yscale("log", base=10)
     ax.yaxis.set_major_locator(ticker.LogLocator(base=10, subs=[1]))
-    ax.yaxis.set_major_formatter(FuncFormatter(log_e_formatter))
-    ax.set_ylabel("Peak Memory (MB)", fontsize=14)
+    ax.yaxis.set_major_formatter(FuncFormatter(y_axis_formatter))
+    metric = "Peak Memory"
+    plt.suptitle(f"{metric}", fontsize=20, x=0.51, y=0.96)
+    ax.set_title("(log₁₀ scale)", fontsize=12, pad=6)
 
     for spine in ax.spines.values():
         if spine.spine_type not in ["bottom", "left"]:

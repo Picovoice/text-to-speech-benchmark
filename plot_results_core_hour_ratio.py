@@ -165,16 +165,14 @@ def _plot(
     )
     ax.yaxis.set_major_locator(ticker.LogLocator(base=10))
 
-    def log_e_formatter(x, pos):
-        if x == 0:
-            return "0"
-        exp = int(np.log10(x))
-        return f"1E{exp}"
+    def y_axis_formatter(x, pos):
+        return f"{x:.0f}×"
 
-    ax.yaxis.set_major_formatter(FuncFormatter(log_e_formatter))
+    ax.yaxis.set_major_formatter(FuncFormatter(y_axis_formatter))
 
     metric = "Core Hour Ratio"
-    plt.ylabel(f"{metric}", fontsize=14)
+    plt.suptitle(f"{metric}", fontsize=20, x=0.51, y=0.96)
+    ax.set_title("(log₁₀ scale)", fontsize=12, pad=6)
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     plt.savefig(output_path)
