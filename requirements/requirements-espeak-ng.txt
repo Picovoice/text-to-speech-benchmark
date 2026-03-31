@@ -79,7 +79,7 @@ pyparsing==3.3.2
 python-dateutil==2.9.0.post0
 pytz==2026.1.post1
 PyYAML==6.0.3
-requests==2.32.5
+requests==2.33.0
 rich==14.3.3
 s3transfer==0.10.4
 shellingham==1.5.4
