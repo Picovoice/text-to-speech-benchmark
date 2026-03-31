@@ -40,7 +40,7 @@ filelock==3.25.2
 fonttools==4.62.0
 frozenlist==1.8.0
 fsspec==2023.10.0
-gradio==5.44.1
+gradio==6.7.0
 gradio_client==1.12.1
 groovy==0.1.2
 h11==0.16.0
