@@ -4,15 +4,21 @@ from typing import Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.ticker import (
+    FuncFormatter,
+    LogLocator,
+    MaxNLocator
+)
 
 from benchmark import (
     DEFAULT_RESULTS_FOLDER,
-    Stats,
+    Stats
 )
 from tts import Synthesizers
 
 Color = Tuple[float, float, float]
 DEFAULT_PLOTS_FOLDER = os.path.join(os.path.dirname(__file__), "results/plots")
+CAP_VAL = 4000
 
 
 def rgb_from_hex(x: str) -> Color:
@@ -29,14 +35,32 @@ GREY4 = rgb_from_hex("#9F9F9F")
 GREY5 = rgb_from_hex("#BFBFBF")
 WHITE = rgb_from_hex("#FFFFFF")
 BLUE = rgb_from_hex("#377DFF")
+COLOR_KOKORO_TTS = rgb_from_hex("#686868")
+COLOR_CHATTERBOX_TTS_TURBO = rgb_from_hex("#4F4F4F")
+COLOR_KITTEN_TTS = rgb_from_hex("#515151")
+COLOR_POCKET_TTS = rgb_from_hex("#808080")
+COLOR_NEU_TTS_NANO_Q4_GGUF = rgb_from_hex("#929292")
+COLOR_PIPER_TTS = rgb_from_hex("#929292")
+COLOR_SOPRANO_TTS = rgb_from_hex("#151515")
+COLOR_SUPERTONIC_TTS_2 = rgb_from_hex("#707070")
+COLOR_ESPEAK_NG = rgb_from_hex("#363636")
 
 ENGINE_PRINT_NAMES = {
-    Synthesizers.AMAZON_POLLY: 'Amazon Polly',
-    Synthesizers.AZURE_TTS: 'Azure TTS',
+    Synthesizers.AMAZON_POLLY: 'Amazon\nPolly',
+    Synthesizers.AZURE_TTS: 'Azure\nTTS',
     Synthesizers.ELEVENLABS: 'ElevenLabs',
-    Synthesizers.ELEVENLABS_WEBSOCKET: 'ElevenLabs\nStreaming Text',
-    Synthesizers.OPENAI_TTS: 'OpenAI TTS',
+    Synthesizers.ELEVENLABS_WEBSOCKET: 'ElevenLabs\nStreaming\nText',
+    Synthesizers.OPENAI_TTS: 'OpenAI\nTTS',
     Synthesizers.PICOVOICE_ORCA: 'Picovoice\nOrca',
+    Synthesizers.KOKORO_TTS: "Kokoro\nTTS",
+    Synthesizers.CHATTERBOX_TTS_TURBO: "Chatterbox\nTTS\nTurbo",
+    Synthesizers.KITTEN_TTS: "Kitten\nTTS Nano\n0.8 INT8",
+    Synthesizers.POCKET_TTS: "Pocket\nTTS",
+    Synthesizers.NEU_TTS_NANO_Q4_GGUF: "Neu TTS\nNano\nQ4 GGUF",
+    Synthesizers.PIPER_TTS: "Piper\nTTS",
+    Synthesizers.SOPRANO_TTS: "Soprano\nTTS",
+    Synthesizers.SUPERTONIC_TTS_2: "Supertonic\nTTS 2",
+    Synthesizers.ESPEAK_NG: "ESPEAK\nNG",
 }
 
 ENGINE_COLORS = {
@@ -46,6 +70,15 @@ ENGINE_COLORS = {
     Synthesizers.ELEVENLABS_WEBSOCKET: GREY3,
     Synthesizers.OPENAI_TTS: GREY4,
     Synthesizers.PICOVOICE_ORCA: BLUE,
+    Synthesizers.KOKORO_TTS: COLOR_KOKORO_TTS,
+    Synthesizers.CHATTERBOX_TTS_TURBO: COLOR_CHATTERBOX_TTS_TURBO,
+    Synthesizers.KITTEN_TTS: COLOR_KITTEN_TTS,
+    Synthesizers.POCKET_TTS: COLOR_POCKET_TTS,
+    Synthesizers.NEU_TTS_NANO_Q4_GGUF: COLOR_NEU_TTS_NANO_Q4_GGUF,
+    Synthesizers.PIPER_TTS: COLOR_PIPER_TTS,
+    Synthesizers.SOPRANO_TTS: COLOR_SOPRANO_TTS,
+    Synthesizers.SUPERTONIC_TTS_2: COLOR_SUPERTONIC_TTS_2,
+    Synthesizers.ESPEAK_NG: COLOR_ESPEAK_NG,
 }
 
 
@@ -74,44 +107,37 @@ def _plot(
 
     num_results = len(results)
 
-    max_delay = 0
-    for synthesizer, mean, std in results:
-        print(
-            f"TTS: {synthesizer.value}")
-        print(
-            "Voice Assistant Response Time: "
-            f"{mean.voice_assistant_response_time:.0f} +- {std.voice_assistant_response_time:.0f} ms")
-        print(
-            f"Time to First Token: {mean.time_to_first_token:.0f} +- {std.time_to_first_token:.0f} ms")
-        print(
-            f"First Token to Speech: {mean.first_token_to_speech:.0f} +- "
-            f"{std.first_token_to_speech:.0f} ms\n")
-        max_delay = \
-            max(max_delay, mean.voice_assistant_response_time) if not only_tts \
-            else max(max_delay, mean.first_token_to_speech)
-
     fig, ax = plt.subplots(figsize=(12, 6))
+    ax.set_yscale("linear")
 
     def round_result(value: float) -> float:
         return round(value, -1)
 
+    def cap_value(x: float) -> Tuple[float, bool]:
+        if x > CAP_VAL:
+            return CAP_VAL, True
+        return x, False
+
+    bottoms = [0.0 for _ in range(num_results)]
     if not only_tts:
+        bottoms = []
         rounded_results = []
         colors = []
-        bottoms = []
         for synthesizer, mean, std in results:
-            rounded_result = round_result(mean.time_to_first_token)
-            rounded_results.append(rounded_result)
+            raw_val = round_result(mean.time_to_first_token)
+            capped_val, is_capped = cap_value(raw_val)
+            rounded_results.append(capped_val)
             colors.append(ENGINE_COLORS[synthesizer])
-            bottoms.append(rounded_result)
+            bottoms.append(capped_val)
         ax.bar(
             range(num_results),
             rounded_results,
             0.5,
             color=colors,
-            label="Time to First Token (using picoLLM's llama-3.2-1b-instruct-385)")
+            label="Time to First Token",
+        )
     else:
-        bottoms = [0 for _ in range(num_results)]
+        bottoms = [0] * num_results
 
     rounded_results = []
     colors = []
@@ -125,27 +151,70 @@ def _plot(
         color=colors,
         bottom=bottoms,
         alpha=0.65 if not only_tts and not no_breakdown else 1.0,
-        label="First Token to Speech" if not only_tts else None)
+        label="First Token to Speech" if not only_tts else None,
+    )
 
-    total_delays = []
-    total_delays_std = []
+    def scientific_notation(x: float, precision: int = 2) -> str:
+        if x == 0:
+            return "0"
+        coeff, exp = f"{x:.{precision}e}".split("e")
+        return f"{float(coeff):.{precision}f}E{int(exp)}"
+
+    def regular_notation(
+            x: float,
+            precision: int = 1,
+            unit: str = "ms",
+    ) -> str:
+        if x == 0:
+            return "0.0"
+        mantissa, exp = f"{x:.{precision}e}".split("e")
+        exp = int(exp)
+        value = float(mantissa) * (10 ** exp)
+        decimals = precision - exp
+
+        if decimals > 0:
+            result = f"{value:.{decimals}f}"
+        else:
+            result = str(int(value))
+
+        return result + unit
+
+    has_anomaly = False
+
     for i, (synthesizer, mean, std) in enumerate(results):
-        mean_total_delay = mean.voice_assistant_response_time if not only_tts else mean.first_token_to_speech
+        mean_total_delay_true = mean.voice_assistant_response_time if not only_tts else mean.first_token_to_speech
         std_total_delay = std.voice_assistant_response_time if not only_tts else std.first_token_to_speech
-        rounded_result = round_result(mean_total_delay)
-        rounded_std = round_result(std_total_delay)
-        total_delays.append(rounded_result)
-        std_total_delay = std.voice_assistant_response_time if not only_tts else std.first_token_to_speech
-        total_delays_std.append(round_result(std_total_delay))
+
+        mean_total_delay_capped, is_capped = cap_value(mean_total_delay_true)
+
+        if is_capped:
+            label = f"*{regular_notation(mean_total_delay_true)}"
+            has_anomaly = True
+        else:
+            label = f"{regular_notation(mean_total_delay_true)}"
+
+        string_above_bar = (
+            f"{label}" if not show_error_bars
+            else f"{label}±{regular_notation(std_total_delay)}"
+        )
         ax.text(
             i,
-            rounded_result + 80,
-            f'{rounded_result:.0f} ms' if not show_error_bars else f'{rounded_result:.0f}±{rounded_std:.0f} ms',
+            mean_total_delay_capped + 40,
+            string_above_bar,
             ha="center",
             color=BLACK,
-            fontsize=12)
+            fontsize=8,
+        )
 
     if show_error_bars:
+        total_delays = [
+            mean.voice_assistant_response_time if not only_tts else mean.first_token_to_speech
+            for _, mean, _ in results
+        ]
+        total_delays_std = [
+            std.voice_assistant_response_time if not only_tts else std.first_token_to_speech
+            for _, _, std in results
+        ]
         plt.errorbar(
             range(num_results),
             total_delays,
@@ -158,19 +227,34 @@ def _plot(
         )
 
     for spine in plt.gca().spines.values():
-        if spine.spine_type != 'bottom' and spine.spine_type != 'left':
+        if spine.spine_type not in ('bottom', 'left'):
             spine.set_visible(False)
 
-    y_max = max_delay + (max_delay / 3) if show_error_bars else max_delay + (max_delay / 6)
-    plt.ylim(0, y_max)
-    plt.xticks(np.arange(0, len(rounded_results)), [ENGINE_PRINT_NAMES[x[0]] for x in results], fontsize=12)
-    y_arange = np.arange(0, y_max, 500)
-    plt.yticks(y_arange, [f"{x:.0f}" for x in y_arange])
+    plt.xticks(
+        np.arange(num_results),
+        [ENGINE_PRINT_NAMES[x[0]] for x in results],
+        fontsize=7,
+    )
+    ax.yaxis.set_major_locator(MaxNLocator(nbins=8))
+    ax.yaxis.set_major_formatter(
+        FuncFormatter(lambda x, _: str(int(x)) + "ms")
+    )
+    ax.set_ylim(0, CAP_VAL)
+
     metric = "Voice Assistant Response Time" if not only_tts else "First Token to Speech"
-    plt.ylabel(f"{metric} (ms)", fontsize=14)
+    plt.suptitle(f"{metric}", fontsize=20, x=0.51, y=0.96)
+
+    if has_anomaly:
+        plt.figtext(
+            0.99, 0.91,
+            "* Values are capped at 4000 ms for readability.\n  The actual values are shown above the bars.",
+            ha="right",
+            fontsize=9,
+            color=BLACK,
+        )
 
     if (not only_tts or show_error_bars) and not no_breakdown:
-        ax.legend(loc="upper left", reverse=False, fontsize=14, framealpha=0)
+        ax.legend(loc="upper left", fontsize=12, framealpha=0)
 
     if show_error_bars:
         output_path = output_path.replace(".png", "_error_bars.png")
@@ -182,7 +266,6 @@ def _plot(
 
     if show:
         plt.show()
-
     plt.close()
 
 

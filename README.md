@@ -1,9 +1,8 @@
-# Text-to-Speech Latency Benchmark
+# Text-to-Speech Benchmark
 
 Made in Vancouver, Canada by [Picovoice](https://picovoice.ai)
 
-This repo is a minimalist and extensible framework for benchmarking the response time of different text-to-speech
-engines, when used in conjunction with large language models (LLMs) for voice assistants.
+This repo is a minimalist and extensible framework for benchmarking various aspects of different text-to-speech (TTS) engines.
 
 ## Table of Contents
 
@@ -20,7 +19,7 @@ This benchmark simulates user - voice-assistant interactions, by generating LLM 
 and synthesizing the response to speech as soon as possible.
 We sample user queries from a public dataset and feed them to [picoLLM](https://picovoice.ai/picollm/) (`llama-3.2-1b-instruct-385`).
 picoLLM generates responses token-by-token, which are passed to different text-to-speech (TTS) engines
-to compare their response times.
+to compare e.g. their response times.
 
 ## Data
 
@@ -35,23 +34,47 @@ range of realistic responses.
 
 ## Engines
 
-We compare the response time for the following Text-to-Speech engines:
+The TTS engines include the following:
+- Cloud APIs:
+	- [Amazon Polly](https://aws.amazon.com/polly/).
+	- [Azure Text-to-Speech](https://azure.microsoft.com/en-us/services/cognitive-services/text-to-speech/).
+	- [ElevenLabs](https://elevenlabs.io/).
+	    - With streaming audio output only.
+	    - With streaming input using [WebSocket API](https://elevenlabs.io/docs/api-reference/websockets).
+	- [OpenAI TTS](https://platform.openai.com/docs/guides/text-to-speech).
+- On-device TTS running on CPU:
+	- [Picovoice Orca Streaming Text-to-Speech](https://picovoice.ai/platform/orca/).
+	- [Kokoro-TTS](https://github.com/hexgrad/kokoro).
+	- [Chatterbox-TTS-Turbo](https://github.com/resemble-ai/chatterbox).
+	- [Kitten-TTS-Nano-0.8-INT8](https://github.com/KittenML/KittenTTS).
+	- [Pocket-TTS](https://github.com/kyutai-labs/pocket-tts).
+	- [Neu-TTS-Nano-Q4-GGUF](https://github.com/neuphonic/neutts).
+	- [Piper-TTS](https://github.com/OHF-Voice/piper1-gpl).
+	- [Soprano-TTS](https://github.com/ekwek1/soprano).
+	- [Supertonic-TTS-2](https://github.com/supertone-inc/supertonic).
+	- [Espeak-NG](https://github.com/espeak-ng/espeak-ng).
 
-- [Amazon Polly](https://aws.amazon.com/polly/)
-- [Azure Text-to-Speech](https://azure.microsoft.com/en-us/services/cognitive-services/text-to-speech/)
-- [ElevenLabs](https://elevenlabs.io/)
-    - With streaming audio output only
-    - With streaming input using [WebSocket API](https://elevenlabs.io/docs/api-reference/websockets)
-- [OpenAI TTS](https://platform.openai.com/docs/guides/text-to-speech)
-- [Picovoice Orca Streaming Text-to-Speech](https://picovoice.ai/platform/orca/)
-
-All of the above engines support streaming audio output.
+Most of the above engines support streaming audio output, except for Chatterbox-TTS-Turbo and Kitten-TTS-Nano.
 Elevenlabs also supports streaming input using a WebSocket API.
 This is done by chunking the text at punctuation marks and sending pre-analyzed text chunks to the engine.
-Orca Streaming Text-to-Speech supports input text streaming without relying on special language markers.
+Orca Streaming TTS supports input text streaming without relying on special language markers.
 Orca can handle the raw LLM tokens as soon as they are produced.
 
 ## Metrics
+
+Our metrics include the following:
+1. [First Token To Speech Latency](#first-token-to-speech--voice-assistant-response-time)
+2. [Voice Assistant Response Time](#first-token-to-speech--voice-assistant-response-time)
+3. [CPU Core Hour Ratio](#cpu-core-hour-ratio)
+4. [Peak Memory (RAM) Usage](#peak-memory-ram-usage)
+5. [Model Size](#model-size)
+6. Platform Support
+7. Language Support
+8. Audio Sample Quality
+
+For 1~3 above, we use a large language model (LLM) running locally on CPU to simulate the real-world scenario of having LLM + TTS as a voice assistant. Note that for a complete voice assistant application we also need to consider the time it takes for the Speech-to-Text system to send the request. Since we can use real-time Speech-to-Text engines like Picovoice's [Cheetah Streaming Speech-to-Text](https://picovoice.ai/platform/cheetah/), we can assume that the latency introduced by the Speech-to-Text is small compared to the total response time. Head over to our GitHub demo at [LLM Voice Assistant](https://github.com/Picovoice/orca/tree/main/demo/llm_voice_assistant), showcasing a real voice-to-voice conversation with [picoLLM](https://picovoice.ai/picollm/), using different TTS systems.
+
+### First Token To Speech & Voice Assistant Response Time:
 
 Response times are typically measured with the `time-to-first-byte` metric, which is the time taken from the moment a
 request was sent until the first byte is received.
@@ -78,14 +101,17 @@ We believe the `FTTS` metric is the most appropriate way to measure the response
 voice assistants. This is because it gets closest to the behavior of humans, who can start reading a response as
 soon as the first token appears.
 
-Note that for a complete voice assistant application we also need to consider the time it takes for the Speech-to-Text
-system to send the request. Since we can use real-time Speech-to-Text engines like
-Picovoice's [Cheetah Streaming Speech-to-Text](https://picovoice.ai/platform/cheetah/),
-we can assume that the latency introduced by the Speech-to-Text is small compared to the total response time.
-Head over to our GitHub demo
-at [LLM Voice Assistant](https://github.com/Picovoice/orca/tree/main/demo/llm_voice_assistant),
-showcasing a real voice-to-voice conversation with [picoLLM](https://picovoice.ai/picollm/),
-using different TTS systems.
+### CPU Core Hour Ratio:
+
+We define **CPU Core Hour Ratio** as the amount of CPU Core Hour it takes to generate an hour of speech. This is to ensure a fair comparison between TTS models that use a large number of CPU cores and those that only use 1 or 2 CPU cores. We define "CPU Core Hour" by summing over the number of hours that each CPU core takes to generate the speech.
+
+### Peak Memory (RAM) Usage:
+
+We define **Peak Memory (RAM) Usage** as the peak RAM usage of TTS when generating speech, excluding that of LLM inference and initial Python set-up.
+
+### Model Size:
+
+We define **Model Size** as the file size of the binary files needed to run TTS, excluding common Python packages like PyTorch. For example, if a model is to be downloaded from Hugging Face, then we only count the binary files there, which can be `.safetensors`, `.bin`, `.gguf`, `.pt`, `.pth`, `.onnx`, ... If a TTS model requires a G2P such as `misaki` or `espeak-ng`, we additionally count the size of that as well.
 
 ## Usage
 
@@ -93,10 +119,10 @@ This benchmark has been developed and tested on `Ubuntu 22.04`, using `Python 3.
 (`AMD Ryzen 9 5900X (12) @ 3.70GHz`).
 
 - Install the requirements:
-
-```console
-pip3 install -r requirements.txt
-```
+	```console
+	pip3 install -r requirements.txt
+	```
+	- Note: For Orca and Cloud APIs, above requirements suffice. However, for other on-device models, since the package requirements conflict with each other, so we provide the exact package versions via `pip freeze` that we use to run those models. they are listed under the `requirements/` directory. You will need different virtual environments to run different on-device models.
 
 - Download the picoLLM model
 
@@ -114,6 +140,8 @@ In the following, we provide instructions for running the benchmark for each eng
 
 ### Amazon Polly Instructions
 
+For metric 1 & 2.
+
 Replace `${AWS_PROFILE}` with the name of the AWS profile you wish to use.
 
 ```console
@@ -124,7 +152,9 @@ python3 benchmark.py \
 --aws-profile-name ${AWS_PROFILE}
 ```
 
-### Azure Speech-to-Text Instructions
+### Azure Text-to-Speech Instructions
+
+For metric 1 & 2.
 
 Replace `${AZURE_SPEECH_KEY}` and `${AZURE_SPEECH_LOCATION}` with the information from your Azure account.
 
@@ -138,6 +168,8 @@ python3 benchmark.py \
 ```
 
 ### ElevenLabs Instructions
+
+For metric 1 & 2.
 
 Replace `${ELEVENLABS_API_KEY}` with your ElevenLabs API key.
 
@@ -163,6 +195,8 @@ python3 benchmark.py \
 
 ### OpenAI TTS Instructions
 
+For metric 1 & 2.
+
 Replace `${OPENAI_API_KEY}` with your OpenAI API key.
 
 ```console
@@ -175,6 +209,8 @@ python3 benchmark.py \
 
 ### Picovoice Orca Instructions
 
+For metric 1 & 2 & 3.
+
 Replace `${PV_ACCESS_KEY}` with your Picovoice AccessKey.
 
 ```console
@@ -184,26 +220,489 @@ python3 benchmark.py \
 --engine picovoice_orca \
 ```
 
-## Results
+For metric 4.
 
-The figures below show the response times of each engine by calculating the average over roughly 200 example
-interactions.
+```console
+for i in 1 2 3 4 5 6 7 8 9 10 20 40 80; do
+	python3 benchmark.py \
+	--picovoice-access-key ${PV_ACCESS_KEY} \
+	--picollm-model-path ${PICOLLM_MODEL_PATH} \
+	--engine picovoice_orca \
+	--test-memory-size-multiple $i \
+done
+```
 
-### First Token to Speech
+### Kokoro-TTS Instructions
+
+Hugging face model download commit hash:
+- Repo: `hexgrad/Kokoro-82M`.
+- Commit hash: `f3ff3571791e39611d31c381e3a41a3af07b4987`.
+
+For metric 1 & 2 & 3.
+
+Replace `${PV_ACCESS_KEY}` with your Picovoice AccessKey.
+
+```console
+python3 benchmark.py \
+--picovoice-access-key ${PV_ACCESS_KEY} \
+--picollm-model-path ${PICOLLM_MODEL_PATH} \
+--engine kokoro_tts \
+```
+
+For metric 4.
+
+```console
+for i in 1 2 3 4 5 6 7 8 9 10 20 40 80; do
+	python3 benchmark.py \
+	--picovoice-access-key ${PV_ACCESS_KEY} \
+	--picollm-model-path ${PICOLLM_MODEL_PATH} \
+	--engine kokoro_tts \
+	--test-memory-size-multiple $i \
+done
+```
+
+### Chatterbox-TTS-Turbo Instructions
+
+Hugging face model download commit hash:
+- Repo: `ResembleAI/chatterbox-turbo`.
+- Commit hash: `749d1c1a46eb10492095d68fbcf55691ccf137cd`.
+
+For metric 1 & 2 & 3.
+
+Replace `${PV_ACCESS_KEY}` with your Picovoice AccessKey.
+
+```console
+python3 benchmark.py \
+--picovoice-access-key ${PV_ACCESS_KEY} \
+--picollm-model-path ${PICOLLM_MODEL_PATH} \
+--engine chatterbox_tts_turbo \
+```
+
+For metric 4.
+
+```console
+for i in 1 2 3 4 5 6 7 8 9 10 20 40 80; do
+	python3 benchmark.py \
+	--picovoice-access-key ${PV_ACCESS_KEY} \
+	--picollm-model-path ${PICOLLM_MODEL_PATH} \
+	--engine chatterbox_tts_turbo \
+	--test-memory-size-multiple $i \
+done
+```
+
+### Kitten-TTS-Nano-0.8-INT8 Instructions
+
+Hugging face model download commit hash:
+- Repo: `KittenML/kitten-tts-nano-0.8-int8`.
+- Commit hash: `84781d74e29ee25217551556398b42f80593a813`.
+
+For metric 1 & 2 & 3.
+
+Replace `${PV_ACCESS_KEY}` with your Picovoice AccessKey.
+
+```console
+python3 benchmark.py \
+--picovoice-access-key ${PV_ACCESS_KEY} \
+--picollm-model-path ${PICOLLM_MODEL_PATH} \
+--engine kitten_tts \
+```
+
+For metric 4.
+
+```console
+for i in 1 2 3 4 5 6 7 8 9 10 20 40 80; do
+	python3 benchmark.py \
+	--picovoice-access-key ${PV_ACCESS_KEY} \
+	--picollm-model-path ${PICOLLM_MODEL_PATH} \
+	--engine kitten_tts \
+	--test-memory-size-multiple $i \
+done
+```
+
+### Pocket-TTS Instructions
+
+Hugging face model download commit hash: 
+- Repo: `kyutai/pocket-tts`:
+	- Commit hash: `427e3d61b276ed69fdd03de0d185fa8a8d97fc5b`.
+- Repo: `kyutai/pocket-tts-without-voice-cloning`:
+	- Commit hash:
+		- `embeddings_v2`: `2578fed2380333b621689eaed6fe144cf69dfeb3`.
+		- `tokenizer.model`: `d4fdd22ae8c8e1cb3634e150ebeff1dab2d16df3`.
+
+For metric 1 & 2 & 3.
+
+Replace `${PV_ACCESS_KEY}` with your Picovoice AccessKey.
+
+```console
+python3 benchmark.py \
+--picovoice-access-key ${PV_ACCESS_KEY} \
+--picollm-model-path ${PICOLLM_MODEL_PATH} \
+--engine pocket_tts \
+```
+
+For metric 4.
+
+```console
+for i in 1 2 3 4 5 6 7 8 9 10 20 40 80; do
+	python3 benchmark.py \
+	--picovoice-access-key ${PV_ACCESS_KEY} \
+	--picollm-model-path ${PICOLLM_MODEL_PATH} \
+	--engine pocket_tts \
+	--test-memory-size-multiple $i \
+done
+```
+
+### Neu-TTS-Nano-Q4-GGUF Instructions
+
+Hugging face model download commit hash:
+- Repo: `neuphonic/neutts-nano-q4-gguf`.
+	- Commit hash: `8ae1694877fdf9d7c4a7bee2cc9775ba7eab3923`.
+- Repo: `neuphonic/neucodec-onnx-decoder`.
+	- Commit hash: `55b95ccfb0b0a63bd033f0f78e6366607a616a33`.
+
+For metric 1 & 2 & 3.
+
+Replace `${PV_ACCESS_KEY}` with your Picovoice AccessKey.
+Replace `${REF_TEXT_PATH}` with the path to the reference text for voice cloning. E.g. `--neutts-ref-text-path ~/neutts/samples/jo.txt`.
+Replace `${REF_CODES_PATH}` with the path to the reference codes for voice cloning. E.g. `--neutts-ref-codes-path ~/neutts/samples/jo.pt`.
+
+```console
+python3 benchmark.py \
+--picovoice-access-key ${PV_ACCESS_KEY} \
+--picollm-model-path ${PICOLLM_MODEL_PATH} \
+--engine neu_tts_nano_q4_gguf \
+--neutts-ref-text-path ${REF_TEXT_PATH} \
+--neutts-ref-codes-path ${REF_CODES_PATH} \
+```
+
+For metric 4.
+
+```console
+for i in 1 2 3 4 5 6 7 8 9 10 20 40 80; do
+	python3 benchmark.py \
+	--picovoice-access-key ${PV_ACCESS_KEY} \
+	--picollm-model-path ${PICOLLM_MODEL_PATH} \
+	--engine neu_tts_nano_q4_gguf \
+	--neutts-ref-text-path ${REF_TEXT_PATH} \
+	--neutts-ref-codes-path ${REF_CODES_PATH} \
+	--test-memory-size-multiple $i \
+done
+```
+
+### Piper-TTS Instructions
+
+Hugging face model download commit hash:
+- Repo: `rhasspy/piper-voices`.
+- Commit hash:
+	- `en_US-lessac-low.onnx`: `217ddc79818708b078d0d14a8fae9608b9d77141`.
+
+For metric 1 & 2 & 3.
+
+Replace `${PV_ACCESS_KEY}` with your Picovoice AccessKey.
+Replace  `PIPER_MODEL_PATH` with the path to Piper-TTS model. E.g. `--pipertts-model-path ~/piper1-gpl/en_US-lessac-low.onnx`.
+
+```console
+python3 benchmark.py \
+--picovoice-access-key ${PV_ACCESS_KEY} \
+--picollm-model-path ${PICOLLM_MODEL_PATH} \
+--engine piper_tts \
+--pipertts-model-path ${PIPER_MODEL_PATH} \
+```
+
+For metric 4.
+
+```console
+for i in 1 2 3 4 5 6 7 8 9 10 20 40 80; do
+	python3 benchmark.py \
+	--picovoice-access-key ${PV_ACCESS_KEY} \
+	--picollm-model-path ${PICOLLM_MODEL_PATH} \
+	--engine piper_tts \
+	--pipertts-model-path ${PIPER_MODEL_PATH} \
+	--test-memory-size-multiple $i \
+done
+```
+
+### Soprano-TTS Instructions
+
+Hugging face model download commit hash:
+- Repo: `ekwek/Soprano-1.1-80M`.
+- Commit hash: `27b5a5f5f541a1db3a51d6fd1b0fc7147b92cd01`.
+
+For metric 1 & 2 & 3.
+
+Replace `${PV_ACCESS_KEY}` with your Picovoice AccessKey.
+
+```console
+python3 benchmark.py \
+--picovoice-access-key ${PV_ACCESS_KEY} \
+--picollm-model-path ${PICOLLM_MODEL_PATH} \
+--engine soprano_tts \
+```
+
+For metric 4.
+
+```console
+for i in 1 2 3 4 5 6 7 8 9 10 20 40 80; do
+	python3 benchmark.py \
+	--picovoice-access-key ${PV_ACCESS_KEY} \
+	--picollm-model-path ${PICOLLM_MODEL_PATH} \
+	--engine soprano_tts \
+	--test-memory-size-multiple $i \
+done
+```
+
+### Supertonic-TTS-2 Instructions
+
+Cloned GitHub repo.
+- GitHub:
+	- Repo: `supertone-inc/supertonic`.
+	- Commit hash: `6fc89ea89eb29defb0ff2230b77c5a519acfe2a9`.
+- Hugging face model download commit hash:
+	- Repo: `Supertone/supertonic-2`.
+	- Commit hash: `75e6727618a02f323c720cba9478152d4bc16ca4`.
+
+For metric 1 & 2 & 3.
+
+Replace `${PV_ACCESS_KEY}` with your Picovoice AccessKey.
+Replace `${SUPERTONIC_REPO_DIR}` with the path to Supertonic-TTS-2's repo. E.g. `--supertonictts-repo-dir ~/supertonic/`.
+Replace `${SUPERTONIC_ONNX_DIR}` with the path to Supertonic-TTS-2's repo. E.g. `--supertonictts-onnx-dir ~/supertonic/py/assets/onnx/`.
+Replace `${SUPERTONIC_VOICE_STYLE_PATH}` with the path to Supertonic-TTS-2's repo. E.g. `--voice-style-path ~/supertonic/py/assets/voice_styles/M1.json`.
+
+```console
+python3 benchmark.py \
+--picovoice-access-key ${PV_ACCESS_KEY} \
+--picollm-model-path ${PICOLLM_MODEL_PATH} \
+--engine supertonic_tts_2 \
+--supertonictts-repo-dir ${SUPERTONIC_REPO_DIR} \
+--supertonictts-onnx-dir ${SUPERTONIC_ONNX_DIR} \
+--supertonictts-voice-style-path ${SUPERTONIC_VOICE_STYLE_PATH} \
+```
+
+For metric 4.
+
+```console
+for i in 1 2 3 4 5 6 7 8 9 10 20 40 80; do
+	python3 benchmark.py \
+	--picovoice-access-key ${PV_ACCESS_KEY} \
+	--picollm-model-path ${PICOLLM_MODEL_PATH} \
+	--engine supertonic_tts_2 \
+	--supertonictts-repo-dir ${SUPERTONIC_REPO_DIR} \
+	--supertonictts-onnx-dir ${SUPERTONIC_ONNX_DIR} \
+	--supertonictts-voice-style-path ${SUPERTONIC_VOICE_STYLE_PATH} \
+	--test-memory-size-multiple $i \
+done
+```
+
+### Espeak-NG Instructions
+
+```console
+sudo apt install espeak-ng
+```
+Version: 1.50.
+
+For metric 1 & 2 & 3.
+
+Replace `${PV_ACCESS_KEY}` with your Picovoice AccessKey.
+
+```console
+python3 benchmark.py \
+--picovoice-access-key ${PV_ACCESS_KEY} \
+--picollm-model-path ${PICOLLM_MODEL_PATH} \
+--engine espeak_ng \
+```
+
+For metric 4.
+
+```console
+for i in 1 2 3 4 5 6 7 8 9 10 20 40 80; do
+	python3 benchmark.py \
+	--picovoice-access-key ${PV_ACCESS_KEY} \
+	--picollm-model-path ${PICOLLM_MODEL_PATH} \
+	--engine espeak_ng \
+	--test-memory-size-multiple $i \
+done
+```
+
+## Results:
+### First Token to Speech:
 
 ![](results/plots/first_token_to_speech.png)
-
-### Voice Assistant Response Time
+### Voice Assistant Response Time:
 
 ![](results/plots/voice_assistant_response_time.png)
+### Core Hour Ratio:
+![](results/plots/core_hour_ratio.png)
 
-### Table of Results
+### Peak Memory:
+![](results/plots/peak_memory.png)
+### **Model Size & Language Support:**
 
-|           Engine           | First Token to Speech | Voice Assistant Response Time |
-|:--------------------------:|:---------------------:|:-----------------------------:|
-|        Amazon Polly        |        1540 ms        |            1610 ms            |
-|    Azure Text-to-Speech    |        1580 ms        |            1660 ms            |
-|         ElevenLabs         |        1470 ms        |            1550 ms            |
-| ElevenLabs Streaming Input |        340 ms         |            500 ms             |
-|         OpenAI TTS         |        2850 ms        |            2930 ms            |
-|       Picovoice Orca       |        130 ms         |            210 ms             |
+|          Engine          | Model size | Language Support                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| :----------------------: | :--------: | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|      Picovoice Orca      |    7MB     | English, German, French, Spanish, Italian, Portuguese, Japanese, Korean.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+|        Kokoro-TTS        |   341MB    | English, Spanish, French, Hindi, Italian, Japanese, Brazilian Portuguese, Mandarin Chinese.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+|   Chatterbox-TTS-Turbo   |   2.98GB   | Arabic, Danish, German, Greek, English, Spanish, Finnish, French, Hebrew, Hindi, Italian, Japanese, Korean, Malay, Dutch, Norwegian, Polish, Portuguese, Russian, Swedish, Swahili, Turkish, Chinese.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Kitten-TTS-Nano-0.8-INT8 |    42MB    | English.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+|        Pocket-TTS        |   242MB    | English.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+|   Neu-TTS-Nano-Q4-GGUF   |   507MB    | English, German, Spanish, French.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+|        Piper-TTS         |    61MB    | Arabic, Bulgarian, Catalan, Czech, Welsh, Danish, German, Greek, English, Spanish, Farsi, Finnish, French, Hindi, Hungarian, Indonesian, Icelandic, Italian, Georgian, Kazakh, Luxembourgish, Latvian, Malayalam, Nepali, Dutch, Norwegian, Polish, Portuguese, Romanian, Russian, Slovak, Slovenian, Serbian, Swedish, Swahili, Telugu, Turkish, Ukrainian, Vietnamese, Chinese.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+|       Soprano-TTS        |   280MB    | English.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+|     Supertonic-TTS-2     |   262MB    | English, Spanish, Portuguese, French, Korean.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+|        ESpeak-NG         |    1MB     | Afrikaans, Albanian, Amharic, Arabic, Aragonese, Armenian, Assamese, Azerbaijani, Bashkir, Chuvash, Basque, Belarusian, Bengali, Bishnupriya Manipuri, Bosnian, Bulgarian, Burmese, Catalan, Cherokee, Chinese, Hawaiian, Croatian, Czech, Danish, Dutch, English, Esperanto, Estonian, Persian, Finnish, French, Gaelic, Georgian, German, Greek, Greenlandic, Guarani, Gujarati, Haitian Creole, Hebrew, Hindi, Hungarian, Icelandic, Indonesian, Interlingua, Ido, Italian, Japanese, Kannada, Konkani, Korean, Kurdish, Kazakh, Kyrgyz, Latin, Luxembourgish, Latgalian, Latvian, Lingua Franca Nova, Lithuanian, Lojban, Māori, Macedonian, Malay, Malayalam, Maltese, Marathi, Nahuatl, Nepali, Norwegian Bokmål, Nogai, Oriya, Oromo, Papiamento, Pyash, Polish, Lang Belta, Quechua, K'iche', Quenya, Portuguese, Punjabi, Klingon, Romanian, Russian, Ukrainian, Sindarin, Serbian, Setswana, Sindhi, Shan (Tai Yai), Sinhala, Slovak, Slovenian, Lule Saami, Spanish, Swahili, Swedish, Tamil, Thai, Turkmen, Tatar, Telugu, Turkish, Uyghur, Urdu, Uzbek, Vietnamese, Welsh. |
+
+### Platform Support:
+
+
+|          Engine          | Linux<br>(x86_64)                                                                                           | macOS<br>(x86_64)                                                                                           | maxOS<br>(arm64)                                                                                            | Windows<br>(x86_64)                                                                                         | Windows<br>(arm64)                                                                                              | Android                                                                                                     | iOS                                                                                                         | Raspberry<br>Pi 3                                                                                           | Raspberry<br>Pi 4                                                                                           | Raspberry<br>Pi 5                                                                                           | Chrome                                                                                                      | Safari                                                                                                      | Firefox                                                                                                     | Edge                                                                                                        |
+| :----------------------: | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+|      Picovoice Orca      | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png)     | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) |
+|        Kokoro-TTS        | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                    | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) |
+|   Chatterbox-TTS-Turbo   | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:\|32](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                |
+| Kitten-TTS-Nano-0.8-INT8 | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png)     | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) |
+|        Pocket-TTS        | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                    | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                |
+|   Neu-TTS-Nano-Q4-GGUF   | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png)     | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                |
+|        Piper-TTS         | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                    | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                |
+|       Soprano-TTS        | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                    | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                |
+|     Supertonic-TTS-2     | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png)     | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) |
+|        ESpeak-NG         | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                    | ![:white_check_mark:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/2705.png) | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                | ![:x:](https://a.slack-edge.com/production-standard-emoji-assets/15.0/google-large/274c.png)                |
+
+### Audio Sample:
+
+<table>
+<tr>
+<td align="center">
+    
+**Picovoice Orca**
+</td>
+<td align="center">
+    
+**Kokoro-TTS**
+</td>
+</tr>
+
+<tr>
+<td align="center">
+
+[Picovoice Orca](https://github.com/user-attachments/assets/d7c70439-44ef-4eae-86ca-4014c40d7039)
+
+</td>
+<td align="center">
+    
+[Kokoro-TTS](https://github.com/user-attachments/assets/8d7770b7-3d6c-4222-8158-8080a1dea055)
+
+</td>
+</tr>
+</table>
+
+---
+
+<table>
+
+<tr>
+<td align="center">
+    
+**Chatterbox-TTS-Turbo**
+</td>
+<td align="center">
+    
+**Kitten-TTS-Nano**
+</td>
+</tr>
+
+<tr>
+<td align="center">
+    
+[Chatterbox-TTS-Turbo](https://github.com/user-attachments/assets/c8644127-ae96-4743-9f24-c89fdeeeccd4)
+</td>
+<td align="center">
+    
+[Kitten-TTS-Nano](https://github.com/user-attachments/assets/bf76987f-f996-4bf2-ac12-38a7459775c2)
+</td>
+</tr>
+</table>
+
+---
+
+
+<table>
+<tr>
+<td align="center">
+    
+**Pocket-TTS**
+</td>
+<td align="center">
+    
+**Neu-TTS-Nano**
+</td>
+</tr>
+
+<tr>
+<td align="center">
+
+[Pocket-TTS](https://github.com/user-attachments/assets/4a43a49e-2769-4129-b81d-1250cdbc4b85)
+
+</td>
+<td align="center">
+    
+[Neu-TTS-Nano](https://github.com/user-attachments/assets/fcbd976d-65b5-43d1-a7b0-c379d4ee01fe)
+
+</td>
+</tr>
+</table>
+
+---
+
+
+<table>
+<tr>
+<td align="center">
+    
+**Piper-TTS**
+</td>
+<td align="center">
+
+**Soprano-TTS**
+</td>
+</tr>
+
+<tr>
+<td align="center">
+
+[Piper-TTS](https://github.com/user-attachments/assets/fc19b68c-cfdd-4030-94ac-4b2dfc3212e3)
+
+</td>
+<td align="center">
+    
+[Soprano-TTS](https://github.com/user-attachments/assets/389950e9-f5ba-45db-b2e2-76a331037b55)
+
+</td>
+</tr>
+</table>
+
+
+---
+
+<table>
+<tr>
+<td align="center">
+    
+**Supertonic-TTS-2**
+</td>
+<td align="center">
+    
+**Espeak-NG**
+</td>
+</tr>
+
+<tr>
+<td align="center">
+
+[Supertonic-TTS-2](https://github.com/user-attachments/assets/11bc0488-103c-4d75-bfc5-9347ea2e0624)
+</td>
+<td align="center">
+
+[Espeak-NG](https://github.com/user-attachments/assets/9285f63b-1b5f-400f-b438-ab0da1833584)
+
+</td>
+</tr>
+</table>
