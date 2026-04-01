@@ -87,7 +87,7 @@ nvidia-nccl-cu12==2.21.5
 nvidia-nvjitlink-cu12==12.4.127
 nvidia-nvtx-cu12==12.4.127
 omegaconf==2.3.0
-onnx==1.20.1
+onnx==1.21.0
 openai==2.9.0
 orjson==3.11.7
 packaging==26.0
