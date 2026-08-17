@@ -115,8 +115,13 @@ We define **Model Size** as the file size of the binary files needed to run TTS,
 
 ## Usage
 
-This benchmark has been developed and tested on `Ubuntu 22.04`, using `Python 3.10`, and a consumer-grade AMD CPU
-(`AMD Ryzen 9 5900X (12) @ 3.70GHz`).
+In order to closely reproduce our numbers, you'll need a machine with the following specifications:
+- `Ubuntu 22.04`
+- `Python 3.10`
+- a consumer-grade AMD CPU (`AMD Ryzen 7 5700X (16) @ 4.6GHz`)
+- 64 GB of RAM (`DDR4 @ 3600MT/s`)
+- 2 consumer grade GPUs for running the LLM (`GeForce RTX 3060 12GB (12GB)`)
+- Ensure your system's CPU and GPU load is low for accurate results
 
 - Install the requirements:
 	```console
